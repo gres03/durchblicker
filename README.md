@@ -4,21 +4,25 @@ Playwright-Automatisierung, die KFZ-Versicherungsdaten in den
 durchblicker.at KFZ-Rechner einträgt. Füllt nur aus — klickt nie auf
 "Berechnen"/"Zum Ergebnis" und sendet nichts ab.
 
-## Setup
+## Setup (neuer PC, 2 Schritte)
 
-1. `git clone` bzw. Ordner kopieren, dann ins Verzeichnis wechseln.
+1. `git clone https://github.com/gres03/durchblicker.git && cd durchblicker`
 2. Setup-Skript ausführen:
    - Windows: `.\setup.ps1`
    - macOS/Linux: `./setup.sh`
-   (legt venv an, installiert Abhängigkeiten + Playwright-Chromium, kopiert
-   `.env.example` nach `.env`)
-3. `.env` mit den eigenen Zugangsdaten ausfüllen (`DURCHBLICKER_USER`,
-   `DURCHBLICKER_PASS`).
-4. Login testen: `python login.py` (öffnet sichtbaren Browser, loggt ein,
-   speichert Session-State nach `./state/`). Bei geändertem Login-Formular:
-   `python login.py --manual`.
-5. Erkundung/Weiterentwicklung: `python explore.py` (dumpt den Rechner-Wizard
-   Schritt für Schritt nach `./exploration/`, siehe `feldkarte.md`).
+
+   Das Skript legt eine venv an, installiert Abhängigkeiten + Playwright-
+   Chromium und fragt beim ersten Lauf interaktiv nach den durchblicker.at-
+   Zugangsdaten (Passwort maskiert), die es lokal in `.env` speichert —
+   diese Datei wird nie committed. Bei einem erneuten Lauf (z.B. nach
+   `git pull`) wird eine bestehende `.env` nicht angetastet.
+
+Danach: Login testen mit `python login.py` (öffnet sichtbaren Browser,
+loggt ein, speichert Session-State nach `./state/`). Bei geändertem
+Login-Formular: `python login.py --manual`.
+
+Erkundung/Weiterentwicklung: `python explore.py` (dumpt den Rechner-Wizard
+Schritt für Schritt nach `./exploration/`, siehe `feldkarte.md`).
 
 ## Stand
 

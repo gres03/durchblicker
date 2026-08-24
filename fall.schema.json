@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "fall.schema.json",
+  "title": "Durchblicker KFZ-Rechner Fall",
+  "description": "Datenmodell fuer einen KFZ-Versicherungsfall, wie er von fill.py in den durchblicker.at KFZ-Rechner eingetragen wird. Struktur und Feldnamen bilden 1:1 die Wizard-Schritte aus feldkarte.md ab (Stand 2026-08-24), NICHT ein abstraktes Branchenmodell -- damit fill.py ohne Uebersetzungsschicht direkt mappen kann. Jedes Datenfeld ist in 'extrahiertesFeld' gewrappt: wert (Zielwert fuer fill.py, nach mapping.py bereits auf die exakte Dropdown-Option/den exakten Format normalisiert), quelle (woertliches Zitat aus dem Quelldokument) und sicher (false wenn unklar/nicht gefunden -- niemals geraten, siehe WICHTIGSTE REGEL). Pflichtfelder in diesem Schema sind nur die, die im explorierten Hauptpfad IMMER noetig sind; verzweigungsabhaengige Felder sind optional und werden von validate.py (Phase 3) je nach gewaehltem Zweig geprueft.",
+  "type": "object",
+  "required": ["fahrzeug", "versicherungsnehmer", "produkt"],
+  "additionalProperties": false,
+  "$defs": {
+    "extrahiertesFeld": {
+      "type": "object",
+      "required": ["wert", "quelle", "sicher"],
+      "additionalProperties": false,
+      "properties": {
+        "wert": {
+          "description": "Zielwert, so wie er ins Formular eingetragen werden soll (exakte Dropdown-Option, ISO-Datum, etc.). Bei sicher=false darf wert auch null sein."
+        },
+        "quelle": {
+          "type": "string",
+          "description": "Woertliches Zitat aus dem Quelldokument (Zulassungsschein, Angebot, Screenshot-Text, ...). Leerstring, wenn der Wert nicht direkt im Dokument stand, sondern z.B. abgeleitet/defaultet wurde -- das muss dann in sicher=false sichtbar sein, ausser es ist ein unkritischer, dokumentierter Default (z.B. Sonderausstattung-Slider-Default)."
+        },
+        "sicher": {
+          "type": "boolean",
+          "description": "false = klaerungsbeduerftig. Wird von confirm.py (Phase 3) rot markiert und muss vom Nutzer bestaetigt/korrigiert werden, bevor fill.py starten darf."
+        }
+      }
+    },
+    "feldString": {
+      "allOf": [
+        { "$ref": "#/$defs/extrahiertesFeld" },
+        { "properties": { "wert": { "type": ["string", "null"] } } }
+      ]
+    },
+    "feldBoolean": {
+      "allOf": [
+        { "$ref": "#/$defs/extrahiertesFeld" },
+        { "properties": { "wert": { "type": ["boolean", "null"] } } }
+      ]
+    },
+    "feldDatum": {
+      "allOf": [
+        { "$ref": "#/$defs/extrahiertesFeld" },
+        { "properties": { "wert": { "type": ["string", "null"], "format": "date", "description": "ISO 8601 (JJJJ-MM-TT). fill.py rechnet das beim Ausfuellen in das Seiten-Format TT/MM/JJJJ um." } } }
+      ]
+    }
+  },
+  "properties": {
+    "fahrzeug": {
+      "type": "object",
+      "description": "Schritt 'Ihr Auto' im Wizard (Fahrzeug waehlen + Zulassungsdaten).",
+      "additionalProperties": false,
+      "required": ["baujahr", "identifikationsmethode", "zugelassen", "erstbesitzer", "finanzierung"],
+      "properties": {
+        "baujahr": {
+          "allOf": [
+            { "$ref": "#/$defs/extrahiertesFeld" },
+            { "properties": { "wert": { "type": ["integer", "null"], "minimum": 1950 } } }
+          ]
+        },
+        "identifikationsmethode": {
+          "allOf": [
+            { "$ref": "#/$defs/extrahiertesFeld" },
+            { "properties": { "wert": { "type": ["string", "null"], "enum": ["nationalcode", "marke_modell", null] } } }
+          ],
+          "description": "Steuert, welchen Zweig fill.py im Schritt 'Fahrzeug waehlen' nimmt. 'nationalcode' ist der bevorzugte, deterministische Weg (siehe feldkarte.md) -- nur auf 'marke_modell' ausweichen, wenn kein Nationalcode im Dokument gefunden wurde. quelle bei diesem Feld ist typischerweise leer (abgeleitete Entscheidung, kein Zitat)."
+        },
+        "nationalcode": {
+          "$ref": "#/$defs/feldString",
+          "description": "Feld A7 im Zulassungsschein. Pflicht, wenn identifikationsmethode=nationalcode."
+        },
+        "marke": { "$ref": "#/$defs/feldString", "description": "Nur relevant wenn identifikationsmethode=marke_modell. Auswahl-Mechanik noch nicht erkundet (TODO in feldkarte.md) -- Feld existiert hier als Platzhalter." },
+        "modell": { "$ref": "#/$defs/feldString", "description": "Siehe marke." },
+        "variante": { "$ref": "#/$defs/feldString", "description": "Siehe marke." },
+        "sonderausstattung_wert": {
+          "allOf": [
+            { "$ref": "#/$defs/extrahiertesFeld" },
+            { "properties": { "wert": { "type": ["number", "null"], "minimum": 0 } } }
+          ],
+          "description": "Euro-Betrag. Optional -- das Formular hat einen Slider-Default, der ohne explizite Angabe stehen bleibt (siehe TODO #8 in feldkarte.md zum 'Exakt eingeben'-Pflichtfeldverhalten)."
+        },
+        "zugelassen": {
+          "$ref": "#/$defs/feldBoolean",
+          "description": "'Ist das Fahrzeug bereits auf Sie zugelassen?'. Nur der Zweig true (Ja) ist bisher erkundet -- siehe TODO #3 in feldkarte.md."
+        },
+        "erstbesitzer": {
+          "$ref": "#/$defs/feldBoolean",
+          "description": "'Haben Sie das Fahrzeug fabriksneu gekauft?'. Nur der Zweig false (Nein / Gebrauchtwagen) ist bisher erkundet -- siehe TODO #4."
+        },
+        "erstzulassung_pkw": {
+          "$ref": "#/$defs/feldDatum",
+          "description": "Erstzulassung des Fahrzeugs selbst. Erscheint im erkundeten Zweig vorbefuellt (Default aus Baujahr) -- pruefen, ob eine explizite Angabe noetig ist."
+        },
+        "erstzulassung_auf_sie": {
+          "$ref": "#/$defs/feldDatum",
+          "description": "Nur relevant wenn erstbesitzer=false. MUSS >= erstzulassung_pkw sein, sonst weist das Formular den Wert zurueck (validate.py muss das pruefen)."
+        },
+        "finanzierung": {
+          "allOf": [
+            { "$ref": "#/$defs/extrahiertesFeld" },
+            { "properties": { "wert": { "type": ["string", "null"], "enum": ["Nein", "Leasing", "Kredit", null] } } }
+          ],
+          "description": "Exakte Optionstexte aus feldkarte.md. Nur 'Nein' ist bisher end-to-end erkundet -- Leasing/Kredit-Folgefelder sind TODO #5."
+        }
+      }
+    },
+    "versicherungsnehmer": {
+      "type": "object",
+      "description": "Schritte 'Bonus/Malus-Stufe' und 'Person' im Wizard.",
+      "additionalProperties": false,
+      "required": ["bonus_malus_stufe", "bestehende_versicherung", "zweitwagen", "anmeldung_als", "geburtsdatum", "nationalitaet", "plz", "email"],
+      "properties": {
+        "bonus_malus_stufe": {
+          "allOf": [
+            { "$ref": "#/$defs/extrahiertesFeld" },
+            { "properties": { "wert": { "type": ["string", "null"], "enum": ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9 - Einsteigerstufe", null] } } }
+          ],
+          "description": "Vollstaendige, live verifizierte Optionsliste (nur 10 Werte)."
+        },
+        "bestehende_versicherung": {
+          "$ref": "#/$defs/feldString",
+          "description": "Exakter Versicherer-Name oder 'Derzeit keine Versicherung'. Vollstaendige Optionsliste noch NICHT erfasst (TODO #1 in feldkarte.md) -- mapping.py muss bei unbekannten Versicherern sicher=false setzen statt zu raten."
+        },
+        "zweitwagen": {
+          "$ref": "#/$defs/feldBoolean",
+          "description": "'Gibt es im Haushalt bereits ein anderes versichertes Auto?'"
+        },
+        "anmeldung_als": {
+          "allOf": [
+            { "$ref": "#/$defs/extrahiertesFeld" },
+            { "properties": { "wert": { "type": ["string", "null"], "enum": ["Privatperson", "Einzelunternehmen", null] } } }
+          ]
+        },
+        "geburtsdatum": { "$ref": "#/$defs/feldDatum" },
+        "nationalitaet": {
+          "$ref": "#/$defs/feldString",
+          "description": "Default am Formular ist 'Österreich'. Vollstaendige Optionsliste nicht erfasst (TODO #1)."
+        },
+        "plz": {
+          "allOf": [
+            { "$ref": "#/$defs/extrahiertesFeld" },
+            { "properties": { "wert": { "type": ["string", "null"], "pattern": "^[0-9]{4}$" } } }
+          ],
+          "description": "4-stellige oesterreichische Postleitzahl (validate.py prueft das nochmal explizit laut Projektauftrag)."
+        },
+        "email": {
+          "allOf": [
+            { "$ref": "#/$defs/extrahiertesFeld" },
+            { "properties": { "wert": { "type": ["string", "null"], "format": "email" } } }
+          ]
+        }
+      }
+    },
+    "produkt": {
+      "type": "object",
+      "description": "Schritt 'Produkt' / 'Leistungsumfang' im Wizard.",
+      "additionalProperties": false,
+      "required": ["versicherungsschutz_praeferenz"],
+      "properties": {
+        "kasko_zusatzdeckung": {
+          "$ref": "#/$defs/feldBoolean",
+          "description": "Optionale Kasko-Zusatzdeckung (Haftpflicht ist am Formular immer aktiv/Pflicht und daher hier kein eigenes Feld)."
+        },
+        "versicherungsschutz_praeferenz": {
+          "allOf": [
+            { "$ref": "#/$defs/extrahiertesFeld" },
+            { "properties": { "wert": { "type": ["string", "null"], "enum": ["durchblicker Empfehlung", "Günstiger Preis", "Deckungen selbst festlegen", null] } } }
+          ],
+          "description": "Nur 'durchblicker Empfehlung' ist bisher end-to-end erkundet. 'Deckungen selbst festlegen' oeffnet vermutlich Selbstbehalt-Felder -- TODO #6 in feldkarte.md."
+        }
+      }
+    }
+  }
+}

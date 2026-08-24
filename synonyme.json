@@ -1,0 +1,78 @@
+{
+  "_hinweis": "Synonymtabelle fuer mapping.py. Pro Feld: Rohtext (klein geschrieben, wie er im Dokument stehen koennte) -> exakter Zielwert aus feldkarte.md. Erweiterbar ohne Codeaenderung. Werte, die hier NICHT eingetragen sind und auch nicht exakt (gross-/kleinschreibungsunabhaengig) mit einem erlaubten Wert uebereinstimmen, werden von mapping.py als sicher=false markiert -- niemals raten.",
+
+  "finanzierung": {
+    "nein": "Nein",
+    "keine": "Nein",
+    "bar": "Nein",
+    "eigenmittel": "Nein",
+    "barzahlung": "Nein",
+    "leasing": "Leasing",
+    "kredit": "Kredit",
+    "finanzierung": "Kredit",
+    "autokredit": "Kredit"
+  },
+
+  "anmeldung_als": {
+    "privat": "Privatperson",
+    "privatperson": "Privatperson",
+    "privatkunde": "Privatperson",
+    "firma": "Einzelunternehmen",
+    "unternehmen": "Einzelunternehmen",
+    "einzelunternehmen": "Einzelunternehmen",
+    "gewerbe": "Einzelunternehmen",
+    "selbststaendig": "Einzelunternehmen",
+    "selbständig": "Einzelunternehmen"
+  },
+
+  "versicherungsschutz_praeferenz": {
+    "empfehlung": "durchblicker Empfehlung",
+    "durchblicker empfehlung": "durchblicker Empfehlung",
+    "empfohlen": "durchblicker Empfehlung",
+    "günstig": "Günstiger Preis",
+    "guenstig": "Günstiger Preis",
+    "günstiger preis": "Günstiger Preis",
+    "billigst": "Günstiger Preis",
+    "selbst": "Deckungen selbst festlegen",
+    "individuell": "Deckungen selbst festlegen",
+    "deckungen selbst festlegen": "Deckungen selbst festlegen"
+  },
+
+  "bonus_malus_stufe": {
+    "0": "0", "1": "1", "2": "2", "3": "3", "4": "4",
+    "5": "5", "6": "6", "7": "7", "8": "8",
+    "9": "9 - Einsteigerstufe",
+    "bm9": "9 - Einsteigerstufe",
+    "einsteigerstufe": "9 - Einsteigerstufe",
+    "neulenker": "9 - Einsteigerstufe"
+  },
+
+  "bestehende_versicherung": {
+    "_hinweis": "UNVOLLSTAENDIG -- siehe TODO #1 in feldkarte.md, vollstaendige Versicherer-Liste noch nicht erfasst. Nur die hier eingetragenen Namen werden automatisch erkannt.",
+    "keine": "Derzeit keine Versicherung",
+    "keine versicherung": "Derzeit keine Versicherung",
+    "derzeit keine versicherung": "Derzeit keine Versicherung",
+    "allianz": "Allianz / Allianz24",
+    "allianz24": "Allianz / Allianz24",
+    "call direct": "Call Direct",
+    "donau": "Donau",
+    "donau versicherung": "Donau",
+    "ergo": "ERGO",
+    "euroherc": "EUROHERC Versicherung",
+    "garanta": "Garanta"
+  },
+
+  "nationalitaet": {
+    "_hinweis": "UNVOLLSTAENDIG -- vollstaendige Optionsliste am Formular noch nicht erfasst.",
+    "österreich": "Österreich",
+    "oesterreich": "Österreich",
+    "austria": "Österreich",
+    "at": "Österreich"
+  },
+
+  "ja_nein": {
+    "_hinweis": "Fuer alle booleschen Felder (zugelassen, erstbesitzer, zweitwagen, kasko_zusatzdeckung). Rohtext -> true/false wird von mapping.py separat behandelt, siehe JA_WERTE/NEIN_WERTE dort.",
+    "ja_werte": ["ja", "j", "yes", "true", "1"],
+    "nein_werte": ["nein", "n", "no", "false", "0"]
+  }
+}

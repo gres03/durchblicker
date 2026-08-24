@@ -1,0 +1,118 @@
+{
+  "fahrzeug": {
+    "baujahr": {
+      "wert": 2020,
+      "quelle": "Datum der Erstzulassung: 02.01.2020",
+      "sicher": true
+    },
+    "identifikationsmethode": {
+      "wert": "nationalcode",
+      "quelle": "",
+      "sicher": true
+    },
+    "nationalcode": {
+      "wert": "260094",
+      "quelle": "A7 Nationaler Code: 260094",
+      "sicher": true
+    },
+    "marke": {
+      "wert": null,
+      "quelle": "",
+      "sicher": false
+    },
+    "modell": {
+      "wert": null,
+      "quelle": "",
+      "sicher": false
+    },
+    "variante": {
+      "wert": null,
+      "quelle": "",
+      "sicher": false
+    },
+    "sonderausstattung_wert": {
+      "wert": null,
+      "quelle": "",
+      "sicher": false
+    },
+    "zugelassen": {
+      "wert": true,
+      "quelle": "Zulassungsschein liegt vor, Kennzeichen W-12345A",
+      "sicher": true
+    },
+    "erstbesitzer": {
+      "wert": false,
+      "quelle": "Vorbesitzer: 1 (laut Zulassungsschein Feld 'Anzahl Halter')",
+      "sicher": true
+    },
+    "erstzulassung_pkw": {
+      "wert": "2020-01-02",
+      "quelle": "Datum der Erstzulassung: 02.01.2020",
+      "sicher": true
+    },
+    "erstzulassung_auf_sie": {
+      "wert": "2020-01-15",
+      "quelle": "Zulassungsdatum auf Halter: 15.01.2020",
+      "sicher": true
+    },
+    "finanzierung": {
+      "wert": "Nein",
+      "quelle": "keine Erwähnung von Leasing/Kredit im Dokument",
+      "sicher": true
+    }
+  },
+  "versicherungsnehmer": {
+    "bonus_malus_stufe": {
+      "wert": null,
+      "quelle": "",
+      "sicher": false
+    },
+    "bestehende_versicherung": {
+      "wert": "Derzeit keine Versicherung",
+      "quelle": "keine bestehende KFZ-Versicherung angegeben",
+      "sicher": true
+    },
+    "zweitwagen": {
+      "wert": false,
+      "quelle": "\"Kein weiteres Fahrzeug im Haushalt\"",
+      "sicher": true
+    },
+    "anmeldung_als": {
+      "wert": "Privatperson",
+      "quelle": "",
+      "sicher": true
+    },
+    "geburtsdatum": {
+      "wert": "1990-05-14",
+      "quelle": "geb. 14.05.1990",
+      "sicher": true
+    },
+    "nationalitaet": {
+      "wert": "Österreich",
+      "quelle": "",
+      "sicher": false
+    },
+    "plz": {
+      "wert": "1010",
+      "quelle": "1010 Wien",
+      "sicher": true
+    },
+    "email": {
+      "wert": "max.mustermann@example.com",
+      "quelle": "max.mustermann@example.com",
+      "sicher": true
+    }
+  },
+  "produkt": {
+    "kasko_zusatzdeckung": {
+      "wert": null,
+      "quelle": "",
+      "sicher": false
+    },
+    "versicherungsschutz_praeferenz": {
+      "wert": "durchblicker Empfehlung",
+      "quelle": "",
+      "sicher": false
+    }
+  }
+}

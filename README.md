@@ -37,9 +37,27 @@ nie geklickt, siehe unten).
 
 **Kompletter Ablauf** (Rohdaten -> ausgefuelltes Formular):
 
-1. Rohdaten (aus einem Kundendokument extrahiert, Struktur wie `fall.json`
-   aber mit unuebersetztem Freitext in den enum-/boolean-Feldern) durch
-   `python mapping.py rohdaten.json -o fall.json` schicken.
+Rohdaten (aus einem Kundendokument extrahiert -- siehe `ANLEITUNG.md` und
+`extraktion_anfrage.txt` fuer den kostenlosen claude.ai-Weg -- Struktur wie
+`fall.json`, aber mit unuebersetztem Freitext in den enum-/boolean-Feldern)
+mit einem einzigen Befehl verarbeiten:
+
+```
+python start.py rohdaten.json
+```
+
+(Windows: alternativ die Datei per Drag & Drop auf `Fall_starten.bat`
+ziehen; macOS/Linux: `./fall_starten.sh rohdaten.json`.)
+
+`start.py` fuehrt `mapping.py` -> `confirm.py` -> `fill.py` automatisch
+nacheinander aus. Ist ein Fall von Anfang an vollstaendig und plausibel,
+laeuft das komplett ohne jede Eingabe durch; nur bei tatsaechlichem
+Klaerungsbedarf (siehe `confirm.py` unten) wird kurz nachgefragt. Die
+einzelnen Schritte lassen sich weiterhin separat aufrufen (z.B. zum
+Debuggen):
+
+1. `python mapping.py rohdaten.json -o fall.json` -- uebersetzt Freitext in
+   exakte Formularwerte.
 2. `python confirm.py fall.json` -- zeigt eine Tabelle, klaert jedes
    unsichere/unplausible Feld interaktiv und schreibt Korrekturen zurueck.
    Erst wenn `confirm.py` mit Exit-Code 0 durchlaeuft (alle Zeilen gruen),
@@ -63,6 +81,10 @@ lehnt `fill.py` mit Klartext-Grund ab, statt zu raten
 
 ## Struktur
 
+- `ANLEITUNG.md` — nicht-technische Bedienungsanleitung fuer den Alltagsgebrauch
+- `extraktion_anfrage.txt` — Textvorlage fuer die kostenlose Dokumentenerkennung via claude.ai
+- `start.py` — ein Befehl fuer den kompletten Ablauf (mapping -> confirm -> fill)
+- `Fall_starten.bat` / `fall_starten.sh` — Drag-and-drop-Wrapper um `start.py`
 - `login.py` — CLI-Einstiegspunkt fuer den Login (Logik in `portals/durchblicker.py`)
 - `explore.py` — Wizard-Erkundung, dumpt Felder/Screenshots nach `./exploration/`
 - `feldkarte.md` — Ergebnis der Erkundung: Locators, Feldtypen, Pflichtfelder, Abhängigkeiten

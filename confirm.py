@@ -208,14 +208,14 @@ def _set_feld(fall, pfad, neues_feld):
     node[teile[-1]] = neues_feld
 
 
-def main():
-    colorama_init()
-
-    if len(sys.argv) != 2:
-        print("Verwendung: python confirm.py <fall.json>", file=sys.stderr)
-        sys.exit(2)
-
-    fall_pfad = Path(sys.argv[1])
+def bestaetige_fall(fall_pfad):
+    """Fuehrt die Genauigkeits-Pruefschleife fuer eine fall.json-Datei aus.
+    Fragt NUR nach, wenn tatsaechlich etwas unsicher/unplausibel ist --
+    ein bereits sauberer Fall laeuft ohne jede Eingabe durch. Schreibt
+    Korrekturen sofort zurueck in fall_pfad. Liefert True, wenn der Fall
+    am Ende vollstaendig bestaetigt ist, False bei Abbruch durch den
+    Nutzer."""
+    fall_pfad = Path(fall_pfad)
     with open(fall_pfad, encoding="utf-8") as f:
         fall = json.load(f)
 
@@ -228,7 +228,7 @@ def main():
 
         if bericht["ok"]:
             print(Fore.GREEN + "Alle Felder bestaetigt und plausibel. Bereit fuer fill.py." + Style.RESET_ALL)
-            sys.exit(0)
+            return True
 
         if bericht["schema_fehler"]:
             print(Fore.YELLOW + "Hinweis: Schema-Fehler koennen nach einer Korrektur unten bestehen "
@@ -239,11 +239,22 @@ def main():
             klaere_interaktiv(fall, schema, gruende)
         except KeyboardInterrupt:
             print("\nAbgebrochen. Aenderungen wurden NICHT gespeichert.")
-            sys.exit(1)
+            return False
 
         with open(fall_pfad, "w", encoding="utf-8") as f:
             json.dump(fall, f, ensure_ascii=False, indent=2)
         print(f"\nZwischenstand nach {fall_pfad} gespeichert. Pruefe erneut ...")
+
+
+def main():
+    colorama_init()
+
+    if len(sys.argv) != 2:
+        print("Verwendung: python confirm.py <fall.json>", file=sys.stderr)
+        sys.exit(2)
+
+    ok = bestaetige_fall(sys.argv[1])
+    sys.exit(0 if ok else 1)
 
 
 if __name__ == "__main__":

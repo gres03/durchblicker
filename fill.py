@@ -55,14 +55,12 @@ def dump_fehler(page, name, meldung):
     print(f"HTML-Dump: {html_pfad}", file=sys.stderr)
 
 
-def main():
-    colorama_init()
-
-    if len(sys.argv) != 2:
-        print("Verwendung: python fill.py <fall.json>", file=sys.stderr)
-        sys.exit(2)
-
-    fall_pfad = Path(sys.argv[1])
+def fuelle_aus(fall_pfad):
+    """Fuellt den KFZ-Rechner anhand einer bestaetigten fall.json aus,
+    verifiziert jedes Feld und haelt den Browser danach offen (wartet auf
+    Enter). Liefert den gewuenschten Exit-Code (0 = alles verifiziert,
+    1 = Abweichung/Fehler/nicht bestaetigt)."""
+    fall_pfad = Path(fall_pfad)
     with open(fall_pfad, encoding="utf-8") as f:
         fall = json.load(f)
 
@@ -72,7 +70,7 @@ def main():
                           "'python confirm.py <fall.json>' erfolgreich durchlaufen lassen." + Style.RESET_ALL,
               file=sys.stderr)
         print(json.dumps(bericht, ensure_ascii=False, indent=2), file=sys.stderr)
-        sys.exit(1)
+        return 1
 
     portal = DurchblickerPortal()
     unterstuetzt_nicht = portal.unterstuetzter_pfad(fall)
@@ -81,7 +79,7 @@ def main():
                           "live erkundet/implementiert sind:" + Style.RESET_ALL, file=sys.stderr)
         for grund in unterstuetzt_nicht:
             print(f"  - {grund}", file=sys.stderr)
-        sys.exit(1)
+        return 1
 
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=False)
@@ -100,7 +98,7 @@ def main():
             dump_fehler(page, "fill_fehler", f"Ausfuellen abgebrochen: {e}")
             input("\nBrowser bleibt offen zur Fehlersuche. Enter druecken zum Beenden...")
             browser.close()
-            sys.exit(1)
+            return 1
 
         zeilen = portal.verify(page, fall)
         drucke_verifikationstabelle(zeilen)
@@ -115,7 +113,17 @@ def main():
 
         input("\nBrowser bleibt offen. Enter druecken zum Beenden...")
         browser.close()
-        sys.exit(0 if alle_ok else 1)
+        return 0 if alle_ok else 1
+
+
+def main():
+    colorama_init()
+
+    if len(sys.argv) != 2:
+        print("Verwendung: python fill.py <fall.json>", file=sys.stderr)
+        sys.exit(2)
+
+    sys.exit(fuelle_aus(sys.argv[1]))
 
 
 if __name__ == "__main__":

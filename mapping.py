@@ -153,6 +153,16 @@ def map_fall(rohdaten):
     )
 
     produkt = _mappe_abschnitt(rohdaten.get("produkt", {}), PRODUKT_FELDER, synonyme)
+    if produkt.get("kasko_zusatzdeckung", {}).get("wert") is False:
+        # kaskovariante ist nur relevant, wenn Kasko am Ende aktiv ist (siehe
+        # portals/durchblicker.py). Ist Kasko klar abgelehnt, ist ein leerer
+        # Wert hier kein Klaerungsbedarf, sondern schlicht nicht anwendbar --
+        # sonst wuerde confirm.py unnoetig danach fragen.
+        produkt["kaskovariante"] = {
+            "wert": None,
+            "quelle": "nicht relevant, da keine Kasko-Zusatzdeckung gewuenscht",
+            "sicher": True,
+        }
 
     return {
         "fahrzeug": fahrzeug,

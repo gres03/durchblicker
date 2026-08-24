@@ -1,0 +1,48 @@
+Bitte lies das angehängte Dokument (Zulassungsschein, Versicherungsangebot,
+Kundenformular o.ä.) und extrahiere daraus die Daten für eine
+KFZ-Versicherung. Gib mir NUR ein einziges JSON-Objekt zurück, keinen
+weiteren Text davor oder danach, exakt in dieser Struktur:
+
+{
+  "fahrzeug": {
+    "baujahr": {"wert": <Jahr als Zahl oder null>, "quelle": "<woertliches Zitat aus dem Dokument>", "sicher": true/false},
+    "nationalcode": {"wert": "<Wert aus Zulassungsschein Feld A7 'Nationaler Code', falls vorhanden, sonst null>", "quelle": "...", "sicher": true/false},
+    "marke": {"wert": "<Automarke oder null, nur falls kein Nationalcode vorhanden ist>", "quelle": "...", "sicher": true/false},
+    "modell": {"wert": "<Modell oder null, nur falls kein Nationalcode vorhanden ist>", "quelle": "...", "sicher": true/false},
+    "variante": {"wert": null, "quelle": "", "sicher": true},
+    "sonderausstattung_wert": {"wert": <Euro-Betrag als Zahl oder null>, "quelle": "...", "sicher": true/false},
+    "zugelassen": {"wert": "Ja" oder "Nein", "quelle": "...", "sicher": true/false},
+    "erstbesitzer": {"wert": "Ja" oder "Nein" (Ja = fabriksneu gekauft), "quelle": "...", "sicher": true/false},
+    "erstzulassung_pkw": {"wert": "<Datum als JJJJ-MM-TT oder null>", "quelle": "...", "sicher": true/false},
+    "erstzulassung_auf_sie": {"wert": "<Datum als JJJJ-MM-TT, wann das Fahrzeug auf den Kunden zugelassen wurde, oder null>", "quelle": "...", "sicher": true/false},
+    "finanzierung": {"wert": "Nein" / "Leasing" / "Kredit", "quelle": "...", "sicher": true/false}
+  },
+  "versicherungsnehmer": {
+    "bonus_malus_stufe": {"wert": "<Bonus-Malus-Stufe falls im Dokument erwaehnt, sonst null>", "quelle": "...", "sicher": true/false},
+    "bestehende_versicherung": {"wert": "<Name der aktuellen KFZ-Versicherung, oder 'keine' falls keine besteht, oder null>", "quelle": "...", "sicher": true/false},
+    "nationalitaet": {"wert": "<Staatsangehoerigkeit, meist 'Österreich'>", "quelle": "...", "sicher": true/false},
+    "zweitwagen": {"wert": "Ja" oder "Nein" (gibt es im Haushalt bereits ein weiteres versichertes Auto?), "quelle": "...", "sicher": true/false},
+    "anmeldung_als": {"wert": "Privat" oder "Firma", "quelle": "...", "sicher": true/false},
+    "geburtsdatum": {"wert": "<Datum als JJJJ-MM-TT oder null>", "quelle": "...", "sicher": true/false},
+    "plz": {"wert": "<4-stellige Postleitzahl oder null>", "quelle": "...", "sicher": true/false},
+    "email": {"wert": "<E-Mail-Adresse oder null>", "quelle": "...", "sicher": true/false}
+  },
+  "produkt": {
+    "kasko_zusatzdeckung": {"wert": "Ja" oder "Nein" (wird eine Kaskoversicherung zusaetzlich zur Haftpflicht gewuenscht?), "quelle": "...", "sicher": true/false},
+    "kaskovariante": {"wert": null, "quelle": "", "sicher": true},
+    "versicherungsschutz_praeferenz": {"wert": "Empfehlung", "quelle": "", "sicher": true}
+  }
+}
+
+WICHTIGE REGELN:
+- "quelle" ist immer das woertliche Zitat aus dem Dokument, das zu diesem
+  Wert gefuehrt hat. Wenn ein Wert nicht direkt im Dokument steht, schreib
+  eine kurze Begruendung hinein (z.B. "nicht im Dokument erwaehnt").
+- "sicher" ist true NUR wenn du dir wirklich sicher bist. Wenn eine Angabe
+  unleserlich, mehrdeutig, unvollstaendig oder gar nicht im Dokument ist:
+  setze "sicher": false und "wert": null. RATE NIEMALS einen Wert, den du
+  nicht wirklich aus dem Dokument ablesen kannst -- ein falscher Wert in
+  einer Versicherungsberechnung ist schlimmer als ein leeres Feld, das
+  später von Hand nachgetragen wird.
+- Datumsangaben immer im Format JJJJ-MM-TT (z.B. 2021-03-10).
+- Gib ausschliesslich das JSON-Objekt zurueck, nichts drumherum.

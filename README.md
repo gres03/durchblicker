@@ -22,15 +22,24 @@ durchblicker.at KFZ-Rechner einträgt. Füllt nur aus — klickt nie auf
 
 ## Stand
 
-Phase 1 (Login + Erkundung) ist abgeschlossen, siehe `feldkarte.md` für die
-vollständige Feldkarte und offene TODOs. `fall.json`/`fill.py`/`confirm.py`
-(Phasen 2–4) folgen im nächsten Schritt.
+- Phase 1 (Login + Erkundung): abgeschlossen, siehe `feldkarte.md`.
+- Phase 2 (Datenmodell): abgeschlossen, siehe `fall.schema.json`/`fall.json`/`mapping.py`.
+- Phase 3 (`validate.py`, `confirm.py`) und Phase 4 (`fill.py`) folgen.
+
+Rohdaten (aus einem Kundendokument extrahiert, Struktur wie `fall.json` aber
+mit unuebersetztem Freitext in den enum-/boolean-Feldern) durch
+`python mapping.py rohdaten.json -o fall.json` schicken, bevor `validate.py`/
+`confirm.py` darauf laufen.
 
 ## Struktur
 
 - `login.py` — Login, Session-State-Speicherung
 - `explore.py` — Wizard-Erkundung, dumpt Felder/Screenshots nach `./exploration/`
 - `feldkarte.md` — Ergebnis der Erkundung: Locators, Feldtypen, Pflichtfelder, Abhängigkeiten
+- `fall.schema.json` — Datenmodell fuer einen KFZ-Fall (JSON Schema)
+- `fall.json` — Beispiel-Fall (VW Golf, siehe feldkarte.md-Testfall)
+- `synonyme.json` — Freitext-zu-Optionswert-Tabelle, ohne Codeaenderung erweiterbar
+- `mapping.py` — uebersetzt Rohdaten-Freitext in exakte Dropdown-Optionen
 - `state/` — Playwright Storage State (gitignored)
 - `logs/` — Fehler-Screenshots/Dumps (gitignored)
 - `exploration/` — Rohdaten aus explore.py (Screenshots, JSON, Accessibility-Snapshots)

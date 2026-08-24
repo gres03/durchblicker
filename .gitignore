@@ -2,6 +2,7 @@
 state/
 logs/
 exploration/
+web_uploads/
 __pycache__/
 *.pyc
 .venv/

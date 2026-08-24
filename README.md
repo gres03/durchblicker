@@ -13,9 +13,12 @@ durchblicker.at KFZ-Rechner einträgt. Füllt nur aus — klickt nie auf
 
    Das Skript legt eine venv an, installiert Abhängigkeiten + Playwright-
    Chromium und fragt beim ersten Lauf interaktiv nach den durchblicker.at-
-   Zugangsdaten (Passwort maskiert), die es lokal in `.env` speichert —
-   diese Datei wird nie committed. Bei einem erneuten Lauf (z.B. nach
-   `git pull`) wird eine bestehende `.env` nicht angetastet.
+   Zugangsdaten (Passwort maskiert) sowie optional einem kostenlosen
+   Gemini-API-Schlüssel (für die automatische Dokumentenerkennung in der
+   Web-Oberfläche, siehe unten — kann leer gelassen und später
+   nachgetragen werden). Alles landet lokal in `.env`, das nie committed
+   wird. Bei einem erneuten Lauf (z.B. nach `git pull`) wird eine
+   bestehende `.env` nicht angetastet.
 
 Danach: Login testen mit `python login.py` (öffnet sichtbaren Browser,
 loggt ein, speichert Session-State nach `./state/`). Bei geändertem
@@ -35,10 +38,17 @@ nie geklickt, siehe unten).
 - Phase 3 (Genauigkeits-Gate): siehe `validate.py`/`confirm.py`.
 - Phase 4 (Ausfuellen + Verifikation): siehe `fill.py`/`portals/`.
 
-**Kompletter Ablauf** (Rohdaten -> ausgefuelltes Formular):
+**Web-Oberflaeche** (empfohlener Weg, siehe `ANLEITUNG.md`): `python app.py`
+(oder `Webapp_starten.bat`/`webapp_starten.sh`) startet einen lokalen Server
+und oeffnet automatisch den Browser. Dokument hochladen -> automatische
+Erkennung ueber die Gemini-API (kostenloses Kontingent, `GEMINI_API_KEY` in
+`.env`) -> nur bei echtem Klaerungsbedarf ein kurzes Formular -> Ausfuellen
++ Verifikation im geoeffneten Browserfenster. `extract.py` kapselt den
+Gemini-Aufruf; wirft `ExtraktionsFehler` mit Klartext-Meldung statt zu
+raten, wenn kein Key gesetzt ist oder die Antwort kein gueltiges JSON war.
 
-Rohdaten (aus einem Kundendokument extrahiert -- siehe `ANLEITUNG.md` und
-`extraktion_anfrage.txt` fuer den kostenlosen claude.ai-Weg -- Struktur wie
+**Kommandozeile** (kein Gemini-Key noetig, Dokumentenerkennung manuell ueber
+claude.ai -- siehe `extraktion_anfrage.txt`): Rohdaten (Struktur wie
 `fall.json`, aber mit unuebersetztem Freitext in den enum-/boolean-Feldern)
 mit einem einzigen Befehl verarbeiten:
 
@@ -50,11 +60,12 @@ python start.py rohdaten.json
 ziehen; macOS/Linux: `./fall_starten.sh rohdaten.json`.)
 
 `start.py` fuehrt `mapping.py` -> `confirm.py` -> `fill.py` automatisch
-nacheinander aus. Ist ein Fall von Anfang an vollstaendig und plausibel,
-laeuft das komplett ohne jede Eingabe durch; nur bei tatsaechlichem
-Klaerungsbedarf (siehe `confirm.py` unten) wird kurz nachgefragt. Die
-einzelnen Schritte lassen sich weiterhin separat aufrufen (z.B. zum
-Debuggen):
+nacheinander aus (dieselben Funktionen, die auch `app.py` fuer die
+Web-Oberflaeche wiederverwendet). Ist ein Fall von Anfang an vollstaendig
+und plausibel, laeuft das komplett ohne jede Eingabe durch; nur bei
+tatsaechlichem Klaerungsbedarf (siehe `confirm.py` unten) wird kurz
+nachgefragt. Die einzelnen Schritte lassen sich weiterhin separat aufrufen
+(z.B. zum Debuggen):
 
 1. `python mapping.py rohdaten.json -o fall.json` -- uebersetzt Freitext in
    exakte Formularwerte.
@@ -82,9 +93,13 @@ lehnt `fill.py` mit Klartext-Grund ab, statt zu raten
 ## Struktur
 
 - `ANLEITUNG.md` — nicht-technische Bedienungsanleitung fuer den Alltagsgebrauch
-- `extraktion_anfrage.txt` — Textvorlage fuer die kostenlose Dokumentenerkennung via claude.ai
-- `start.py` — ein Befehl fuer den kompletten Ablauf (mapping -> confirm -> fill)
+- `app.py` — lokale Web-Oberflaeche (Upload -> Erkennung -> Pruefen -> Ausfuellen), `templates/`
+- `extract.py` — automatische Dokumentenerkennung ueber die Gemini API (kostenloses Kontingent)
+- `extraktion_anfrage.txt` — Textvorlage fuer die manuelle Dokumentenerkennung via claude.ai (Fallback ohne API-Key)
+- `Webapp_starten.bat` / `webapp_starten.sh` — Start-Wrapper fuer `app.py`
+- `start.py` — ein Befehl fuer den kompletten CLI-Ablauf (mapping -> confirm -> fill)
 - `Fall_starten.bat` / `fall_starten.sh` — Drag-and-drop-Wrapper um `start.py`
+- `web_uploads/` — hochgeladene Dokumente + aktueller Fall der Web-Oberflaeche (gitignored, enthaelt personenbezogene Daten)
 - `login.py` — CLI-Einstiegspunkt fuer den Login (Logik in `portals/durchblicker.py`)
 - `explore.py` — Wizard-Erkundung, dumpt Felder/Screenshots nach `./exploration/`
 - `feldkarte.md` — Ergebnis der Erkundung: Locators, Feldtypen, Pflichtfelder, Abhängigkeiten

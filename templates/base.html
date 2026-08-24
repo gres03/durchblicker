@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block titel %}durchblicker-automation{% endblock %}</title>
+<style>
+  :root {
+    --bg: #F6F3EC;
+    --surface: #FFFFFF;
+    --border: #E4DDCC;
+    --text: #23261F;
+    --text-muted: #6B6858;
+    --akzent: #0F4C3A;
+    --akzent-hell: #E8F0EA;
+    --warnung: #A8431E;
+    --warnung-hell: #FBEBE3;
+    --erfolg: #2F7A4F;
+    --erfolg-hell: #E9F4EC;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+  }
+  h1, h2, h3 {
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    letter-spacing: -0.01em;
+    margin: 0 0 0.4em 0;
+  }
+  .huelle {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 4rem;
+  }
+  .kopf {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .kopf .marke {
+    font-family: Georgia, serif;
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--akzent);
+  }
+  .kopf .schritt {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+  .karte {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    box-shadow: 0 1px 2px rgba(35,38,31,0.04), 0 8px 24px -12px rgba(35,38,31,0.10);
+  }
+  p.hinweis { color: var(--text-muted); font-size: 0.95rem; }
+  a { color: var(--akzent); }
+  .knopf {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    background: var(--akzent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 0.75rem 1.4rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 120ms ease, box-shadow 120ms ease;
+  }
+  .knopf:hover { box-shadow: 0 6px 16px -6px rgba(15,76,58,0.5); transform: translateY(-1px); }
+  .knopf:focus-visible { outline: 3px solid #9CC9B4; outline-offset: 2px; }
+  .knopf:active { transform: translateY(0); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+  th { text-align: left; color: var(--text-muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); }
+  td { padding: 0.6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr.unklar { background: var(--warnung-hell); }
+  .abzeichen { display: inline-block; padding: 0.15em 0.6em; border-radius: 999px; font-size: 0.78rem; font-weight: 700; }
+  .abzeichen.ok { background: var(--erfolg-hell); color: var(--erfolg); }
+  .abzeichen.klaeren { background: var(--warnung-hell); color: var(--warnung); }
+  .grund { color: var(--warnung); font-size: 0.85rem; margin-top: 0.25rem; }
+  input[type=text], select {
+    width: 100%;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.92rem;
+    background: #fff;
+  }
+  input:focus-visible, select:focus-visible { outline: 3px solid #9CC9B4; outline-offset: 1px; }
+  .zitat { color: var(--text-muted); font-style: italic; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+  <div class="huelle">
+    <div class="kopf">
+      <span class="marke">durchblicker-automation</span>
+      <span class="schritt">{% block schritt %}{% endblock %}</span>
+    </div>
+    <div class="karte">
+      {% block inhalt %}{% endblock %}
+    </div>
+  </div>
+</body>
+</html>

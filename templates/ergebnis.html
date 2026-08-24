@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block titel %}Ergebnis — durchblicker-automation{% endblock %}
+{% block schritt %}Schritt 3 von 3{% endblock %}
+{% block inhalt %}
+  <h1>Ausfüllen abgeschlossen</h1>
+
+  {% if fehlermeldung %}
+    <p style="color: var(--warnung); background: var(--warnung-hell); padding: 0.8rem 1rem; border-radius: 8px;">
+      {{ fehlermeldung }}
+    </p>
+  {% else %}
+    {% set alle_ok = zeilen | rejectattr('ok') | list | length == 0 %}
+    <p class="hinweis">
+      {% if alle_ok %}
+        Alle Felder wurden verifiziert und stimmen mit den Vorgaben überein.
+      {% else %}
+        Es gibt Abweichungen zwischen Soll und Ist — bitte unten prüfen und im
+        geöffneten Browserfenster von Hand korrigieren.
+      {% endif %}
+    </p>
+
+    <table>
+      <thead><tr><th>Feld</th><th>Soll</th><th>Ist</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for z in zeilen %}
+        <tr>
+          <td>{{ z.pfad }}</td>
+          <td>{{ z.soll }}</td>
+          <td>{{ z.ist }}</td>
+          <td><span class="abzeichen {{ 'ok' if z.ok else 'klaeren' }}">{{ 'OK' if z.ok else 'FEHLER' }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  <p class="hinweis" style="margin-top:1.5rem;">
+    Das geöffnete Browserfenster bleibt bestehen — dort selbst prüfen und
+    erst dann auf „Berechnen“ klicken. Diese Web-Oberfläche klickt dort
+    nichts von selbst.
+  </p>
+  <p><a href="{{ url_for('start') }}">Nächsten Fall bearbeiten</a></p>
+{% endblock %}

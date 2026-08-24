@@ -55,30 +55,69 @@ def dump_fehler(page, name, meldung):
     print(f"HTML-Dump: {html_pfad}", file=sys.stderr)
 
 
-def fuelle_aus(fall_pfad):
-    """Fuellt den KFZ-Rechner anhand einer bestaetigten fall.json aus,
-    verifiziert jedes Feld und haelt den Browser danach offen (wartet auf
-    Enter). Liefert den gewuenschten Exit-Code (0 = alles verifiziert,
-    1 = Abweichung/Fehler/nicht bestaetigt)."""
+def _lade_und_pruefe_fall(fall_pfad):
+    """Laedt fall_pfad, prueft Bestaetigung + unterstuetzten Pfad. Liefert
+    (fall, portal) oder wirft ValueError mit einer bereits fertig
+    formatierten (aber noch nicht gedruckten) Fehlermeldung."""
     fall_pfad = Path(fall_pfad)
     with open(fall_pfad, encoding="utf-8") as f:
         fall = json.load(f)
 
     bericht = validiere(fall)
     if not bericht["ok"]:
-        print(Fore.RED + "FEHLER: fall.json ist nicht bestaetigt. Bitte zuerst "
-                          "'python confirm.py <fall.json>' erfolgreich durchlaufen lassen." + Style.RESET_ALL,
-              file=sys.stderr)
-        print(json.dumps(bericht, ensure_ascii=False, indent=2), file=sys.stderr)
-        return 1
+        raise ValueError(
+            "fall.json ist nicht bestaetigt. Bitte zuerst 'python confirm.py <fall.json>' "
+            "erfolgreich durchlaufen lassen.\n" + json.dumps(bericht, ensure_ascii=False, indent=2)
+        )
 
     portal = DurchblickerPortal()
     unterstuetzt_nicht = portal.unterstuetzter_pfad(fall)
     if unterstuetzt_nicht:
-        print(Fore.RED + "FEHLER: fall.json verwendet Wizard-Zweige, die noch nicht "
-                          "live erkundet/implementiert sind:" + Style.RESET_ALL, file=sys.stderr)
-        for grund in unterstuetzt_nicht:
-            print(f"  - {grund}", file=sys.stderr)
+        raise ValueError(
+            "fall.json verwendet Wizard-Zweige, die noch nicht live erkundet/implementiert sind:\n"
+            + "\n".join(f"  - {g}" for g in unterstuetzt_nicht)
+        )
+
+    return fall, portal
+
+
+def fuelle_fuer_webapp(fall_pfad):
+    """Wie fuelle_aus, aber ohne input()-Blockade und ohne den Browser am
+    Ende zu schliessen -- fuer app.py, wo der Nutzer den Browser selbst
+    ansieht/schliesst statt eine Terminal-Eingabe zu machen. Playwright
+    wird bewusst NICHT ueber einen 'with'-Block verwaltet, damit der
+    Browser nach Rueckkehr dieser Funktion offen bleibt. Liefert
+    (zeilen, fehler_meldung_oder_None)."""
+    fall, portal = _lade_und_pruefe_fall(fall_pfad)
+
+    playwright = sync_playwright().start()
+    browser = playwright.chromium.launch(headless=False)
+    if STATE_FILE.exists():
+        context = browser.new_context(storage_state=str(STATE_FILE))
+    else:
+        context = browser.new_context()
+    page = context.new_page()
+
+    try:
+        portal.navigate(page)
+        portal.fill(page, fall)
+    except Exception as e:
+        dump_fehler(page, "fill_fehler", f"Ausfuellen abgebrochen: {e}")
+        return [], f"Ausfuellen abgebrochen: {e} (Browser bleibt zur Fehlersuche offen)"
+
+    zeilen = portal.verify(page, fall)
+    return zeilen, None
+
+
+def fuelle_aus(fall_pfad):
+    """Fuellt den KFZ-Rechner anhand einer bestaetigten fall.json aus,
+    verifiziert jedes Feld und haelt den Browser danach offen (wartet auf
+    Enter). Liefert den gewuenschten Exit-Code (0 = alles verifiziert,
+    1 = Abweichung/Fehler/nicht bestaetigt)."""
+    try:
+        fall, portal = _lade_und_pruefe_fall(fall_pfad)
+    except ValueError as e:
+        print(Fore.RED + f"FEHLER: {e}" + Style.RESET_ALL, file=sys.stderr)
         return 1
 
     with sync_playwright() as playwright:

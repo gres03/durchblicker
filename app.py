@@ -30,6 +30,7 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 FALL_PFAD = UPLOAD_DIR / "aktueller_fall.json"
 
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # 20 MB, grosszuegig fuer Fotos/gescannte PDFs
 
 
 def lade_fall():
@@ -118,10 +119,34 @@ def hochladen():
         rohdaten = extrahiere(ziel)
     except ExtraktionsFehler as e:
         return render_template("upload.html", fehler=str(e))
+    except Exception as e:
+        return render_template(
+            "upload.html",
+            fehler=f"Unerwarteter Fehler beim Auslesen: {e}. Bitte nochmal versuchen "
+                   "oder ein anderes Foto/PDF probieren.",
+        )
 
-    fall = map_fall(rohdaten)
+    try:
+        fall = map_fall(rohdaten)
+    except Exception as e:
+        return render_template(
+            "upload.html",
+            fehler=f"Die Erkennung hat eine unerwartete Antwort geliefert und konnte "
+                   f"nicht verarbeitet werden ({e}). Bitte nochmal versuchen.",
+        )
+
     speichere_fall(fall)
     return redirect(url_for("pruefen"))
+
+
+@app.errorhandler(413)
+def datei_zu_gross(_e):
+    return render_template("upload.html", fehler="Datei ist zu gross (maximal 20 MB). Bitte verkleinern oder ein Foto statt Scan verwenden."), 413
+
+
+@app.errorhandler(500)
+def interner_fehler(_e):
+    return render_template("upload.html", fehler="Unerwarteter Fehler. Bitte nochmal versuchen; falls es wiederholt auftritt, das schwarze Fenster im Hintergrund pruefen."), 500
 
 
 @app.route("/pruefen")
@@ -204,4 +229,4 @@ def _oeffne_browser():
 
 if __name__ == "__main__":
     threading.Timer(1.0, _oeffne_browser).start()
-    app.run(debug=False)
+    app.run(debug=False, threaded=True)

@@ -24,12 +24,17 @@ durchblicker.at KFZ-Rechner einträgt. Füllt nur aus — klickt nie auf
 
 - Phase 1 (Login + Erkundung): abgeschlossen, siehe `feldkarte.md`.
 - Phase 2 (Datenmodell): abgeschlossen, siehe `fall.schema.json`/`fall.json`/`mapping.py`.
-- Phase 3 (`validate.py`, `confirm.py`) und Phase 4 (`fill.py`) folgen.
+- Phase 3 (Genauigkeits-Gate): abgeschlossen, siehe `validate.py`/`confirm.py`.
+- Phase 4 (`fill.py`, tatsaechliches Ausfuellen) folgt als letzter Schritt.
 
-Rohdaten (aus einem Kundendokument extrahiert, Struktur wie `fall.json` aber
-mit unuebersetztem Freitext in den enum-/boolean-Feldern) durch
-`python mapping.py rohdaten.json -o fall.json` schicken, bevor `validate.py`/
-`confirm.py` darauf laufen.
+Ablauf: Rohdaten (aus einem Kundendokument extrahiert, Struktur wie
+`fall.json` aber mit unuebersetztem Freitext in den enum-/boolean-Feldern)
+durch `python mapping.py rohdaten.json -o fall.json` schicken, dann
+`python confirm.py fall.json` -- zeigt eine Tabelle, klaert jedes unsichere/
+unplausible Feld interaktiv und schreibt Korrekturen zurueck. Erst wenn
+`confirm.py` mit Exit-Code 0 durchlaeuft (alle Zeilen gruen), ist der Fall
+bereit fuer `fill.py`. `validate.py fall.json` kann auch einzeln als reiner
+Pruefbericht (JSON, kein Terminal-UI) aufgerufen werden.
 
 ## Struktur
 
@@ -40,6 +45,8 @@ mit unuebersetztem Freitext in den enum-/boolean-Feldern) durch
 - `fall.json` — Beispiel-Fall (VW Golf, siehe feldkarte.md-Testfall)
 - `synonyme.json` — Freitext-zu-Optionswert-Tabelle, ohne Codeaenderung erweiterbar
 - `mapping.py` — uebersetzt Rohdaten-Freitext in exakte Dropdown-Optionen
+- `validate.py` — Schema-/Plausibilitaets-/Quercheck-Pruefbericht fuer ein fall.json
+- `confirm.py` — interaktives Genauigkeits-Gate (Terminal-Tabelle, Korrekturen), Voraussetzung fuer fill.py
 - `state/` — Playwright Storage State (gitignored)
 - `logs/` — Fehler-Screenshots/Dumps (gitignored)
 - `exploration/` — Rohdaten aus explore.py (Screenshots, JSON, Accessibility-Snapshots)

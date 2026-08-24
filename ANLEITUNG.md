@@ -32,7 +32,18 @@ strukturierte Liste werden.
    und mit `}` endet. Das ist die "Datenliste". Kopiere genau diesen
    Textblock.
 5. Öffne im Programm-Ordner eine neue Textdatei, füge den Text ein, und
-   speichere sie z.B. als `kunde_mueller.json`.
+   speichere sie z.B. als `kunde_mueller.json`. Im Detail:
+   1. Windows-Taste drücken, "Editor" eintippen, Enter — **nicht Word**
+      benutzen, das würde versteckte Formatierung mitspeichern.
+   2. Text mit `Strg+V` einfügen.
+   3. Oben "Datei" → "Speichern unter…".
+   4. Zum Programm-Ordner navigieren
+      (`C:\Users\PC\OneDrive\Dokumente\ai tool mama\durchblicker-automation`).
+   5. Beim Dateinamen genau `"kunde_mueller.json"` eingeben — **mit
+      Anführungszeichen**, sonst hängt der Editor automatisch `.txt`
+      hinten an und die Datei heißt am Ende `kunde_mueller.json.txt`,
+      was nicht funktioniert.
+   6. Speichern klicken.
 
 **Wichtig:** Claude macht gelegentlich Fehler beim Lesen (z.B. bei
 schlechten Fotos). Das ist kein Problem — im nächsten Schritt wird genau

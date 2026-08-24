@@ -16,6 +16,28 @@ zugelassen (Neuwagen-Anmeldung), "Marke und Modell" statt Zulassungscode,
 Erstbesitzer=Ja, Leasing/Kredit-Finanzierung, "Günstiger Preis"/"Deckungen
 selbst festlegen" statt Empfehlung, Kasko-Zusatzdeckung, Einzelunternehmen.
 
+**Update Phase 4 (fill.py, live end-to-end getestet, siehe portals/durchblicker.py):**
+- Tippen-zum-Filtern in durchsuchbaren Comboboxen (Baujahr, Bestehende
+  Versicherung) live verifiziert -- funktioniert zuverlaessig, auch fuer
+  Werte ausserhalb der initial gerenderten Optionen (getestet: Baujahr 2015,
+  Versicherer "Wiener Städtische" -- neu zur Optionsliste hinzugefuegt).
+- Kasko-Checkbox: `get_by_role("checkbox", name="Kasko", exact=True")`
+  live verifiziert (Haftpflicht ist beim Laden bereits `checked`).
+- **Bug gefunden + gefixt:** Bei einem bereits VORBEFUELLTEN Datumsfeld
+  (z.B. "Erstzulassung des PKW", vom Formular aus dem Baujahr vorbelegt)
+  fokussiert ein Klick auf den umschliessenden DIV nicht zuverlaessig das
+  "Tag"-Segment, sondern offenbar das zuletzt aktive Segment -- 8 blind
+  getippte Ziffern landen dann auf den falschen Segmenten und ergeben ein
+  kaputtes Datum. Fix: explizit den "Tag ändern"-Button anklicken
+  (`page.locator(selector).get_by_role("button", name="Tag ändern")`).
+- **Bug gefunden + gefixt:** Das Feld "Sonderausstattung exakt" verarbeitet
+  `"500.0"` (Python-Float-Stringrepraesentation) falsch -- landet als `"5"`
+  im Feld. Fix: ganzzahlige Betraege als reinen Ziffernstring ohne `.0`
+  senden (siehe `_format_betrag` in portals/durchblicker.py). Zeigt genau,
+  wofuer die Pflicht-Verifikation in fill.py da ist -- beide Bugs wurden
+  ausschliesslich durch den Soll/Ist-Vergleich entdeckt, nicht durch
+  Betrachtung des Screenshots.
+
 ---
 
 ## Wichtige Erkenntnisse (site-weit)

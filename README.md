@@ -22,23 +22,44 @@ durchblicker.at KFZ-Rechner einträgt. Füllt nur aus — klickt nie auf
 
 ## Stand
 
-- Phase 1 (Login + Erkundung): abgeschlossen, siehe `feldkarte.md`.
-- Phase 2 (Datenmodell): abgeschlossen, siehe `fall.schema.json`/`fall.json`/`mapping.py`.
-- Phase 3 (Genauigkeits-Gate): abgeschlossen, siehe `validate.py`/`confirm.py`.
-- Phase 4 (`fill.py`, tatsaechliches Ausfuellen) folgt als letzter Schritt.
+Alle 4 Phasen sind abgeschlossen und end-to-end gegen die echte Seite
+getestet (bis zum letzten Schritt vor "Zum Ergebnis" -- dieser Button wird
+nie geklickt, siehe unten).
 
-Ablauf: Rohdaten (aus einem Kundendokument extrahiert, Struktur wie
-`fall.json` aber mit unuebersetztem Freitext in den enum-/boolean-Feldern)
-durch `python mapping.py rohdaten.json -o fall.json` schicken, dann
-`python confirm.py fall.json` -- zeigt eine Tabelle, klaert jedes unsichere/
-unplausible Feld interaktiv und schreibt Korrekturen zurueck. Erst wenn
-`confirm.py` mit Exit-Code 0 durchlaeuft (alle Zeilen gruen), ist der Fall
-bereit fuer `fill.py`. `validate.py fall.json` kann auch einzeln als reiner
-Pruefbericht (JSON, kein Terminal-UI) aufgerufen werden.
+- Phase 1 (Login + Erkundung): siehe `feldkarte.md`.
+- Phase 2 (Datenmodell): siehe `fall.schema.json`/`fall.json`/`mapping.py`.
+- Phase 3 (Genauigkeits-Gate): siehe `validate.py`/`confirm.py`.
+- Phase 4 (Ausfuellen + Verifikation): siehe `fill.py`/`portals/`.
+
+**Kompletter Ablauf** (Rohdaten -> ausgefuelltes Formular):
+
+1. Rohdaten (aus einem Kundendokument extrahiert, Struktur wie `fall.json`
+   aber mit unuebersetztem Freitext in den enum-/boolean-Feldern) durch
+   `python mapping.py rohdaten.json -o fall.json` schicken.
+2. `python confirm.py fall.json` -- zeigt eine Tabelle, klaert jedes
+   unsichere/unplausible Feld interaktiv und schreibt Korrekturen zurueck.
+   Erst wenn `confirm.py` mit Exit-Code 0 durchlaeuft (alle Zeilen gruen),
+   ist der Fall bestaetigt.
+3. `python fill.py fall.json` -- prueft das bestaetigte fall.json ein
+   zweites Mal (kein Flag zum Ueberspringen), oeffnet einen sichtbaren
+   Browser, fuellt den Wizard Schritt fuer Schritt aus, verifiziert jedes
+   Feld direkt nach dem Ausfuellen durch Zuruecklesen aus dem DOM und
+   druckt eine Soll/Ist-Tabelle. Bei Abweichungen: laute Warnung,
+   Exit-Code 1. Der Browser bleibt in jedem Fall offen, das Skript wartet
+   auf Enter -- **es wird nie auf "Zum Ergebnis"/"Berechnen" geklickt.**
+
+`validate.py fall.json` kann auch einzeln als reiner Pruefbericht (JSON,
+kein Terminal-UI) aufgerufen werden.
+
+**Aktuell unterstuetzter Wizard-Pfad:** siehe `feldkarte.md`. Fall.json-
+Kombinationen ausserhalb des live erkundeten Hauptpfads (z.B. "Marke und
+Modell" statt Nationalcode, Neuanmeldung, Leasing/Kredit, Einzelunternehmen)
+lehnt `fill.py` mit Klartext-Grund ab, statt zu raten
+(`DurchblickerPortal.unterstuetzter_pfad`).
 
 ## Struktur
 
-- `login.py` — Login, Session-State-Speicherung
+- `login.py` — CLI-Einstiegspunkt fuer den Login (Logik in `portals/durchblicker.py`)
 - `explore.py` — Wizard-Erkundung, dumpt Felder/Screenshots nach `./exploration/`
 - `feldkarte.md` — Ergebnis der Erkundung: Locators, Feldtypen, Pflichtfelder, Abhängigkeiten
 - `fall.schema.json` — Datenmodell fuer einen KFZ-Fall (JSON Schema)
@@ -47,6 +68,9 @@ Pruefbericht (JSON, kein Terminal-UI) aufgerufen werden.
 - `mapping.py` — uebersetzt Rohdaten-Freitext in exakte Dropdown-Optionen
 - `validate.py` — Schema-/Plausibilitaets-/Quercheck-Pruefbericht fuer ein fall.json
 - `confirm.py` — interaktives Genauigkeits-Gate (Terminal-Tabelle, Korrekturen), Voraussetzung fuer fill.py
+- `fill.py` — CLI-Einstiegspunkt fuers Ausfuellen (Logik in `portals/durchblicker.py`)
+- `portals/base.py` — abstrakte Portal-Schnittstelle (login/navigate/fill/verify/unterstuetzter_pfad)
+- `portals/durchblicker.py` — Implementierung fuer durchblicker.at. Ein zweites Portal ist ein neues Modul hier, ohne Aenderung an `login.py`/`fill.py`
 - `state/` — Playwright Storage State (gitignored)
-- `logs/` — Fehler-Screenshots/Dumps (gitignored)
+- `logs/` — Fehler-Screenshots/HTML-Dumps (gitignored)
 - `exploration/` — Rohdaten aus explore.py (Screenshots, JSON, Accessibility-Snapshots)

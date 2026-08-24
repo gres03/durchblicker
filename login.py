@@ -1,58 +1,32 @@
 """
 Login fuer durchblicker.at. Fuellt das Anmeldeformular aus, speichert den
 Session-State (Cookies + LocalStorage) nach ./state/ zur Wiederverwendung
-in fill.py / explore.py.
+in fill.py / explore.py. Die eigentliche Portal-Logik liegt in
+portals/durchblicker.py (verifizierte Selektoren, siehe dort und
+feldkarte.md) -- dieses Skript ist nur der CLI-Einstiegspunkt.
 
-Verifizierte Selektoren (live auf https://durchblicker.at/konto/auth/anmelden
-mit Playwright geprueft am 2026-08-24):
-  - E-Mail-Feld:    #login-email
-  - Passwort-Feld:  #login-password
-  - Submit-Button:  #login-container-form-cta (bindet Google reCAPTCHA v2,
-                     unsichtbar/"invisible" -- loest im normalen (nicht
-                     headless) Browser automatisch aus, kein Klick auf eine
-                     Checkbox noetig)
-  - Cookie-Banner:  Button mit Accessible Name "Alle Cookies akzeptieren"
-                     (muss weggeklickt werden, sonst blockiert er den
-                     Submit-Button)
-  - Fehlermeldung:  .alert.error-container .error-message
-                     (verifiziert per Testlauf mit falschen Zugangsdaten;
-                     Text z.B. "Ihre E-Mail-Adresse oder Ihr Passwort ist
-                     falsch")
-
-Der Erfolgsfall (welche Seite/Element nach echtem Login erscheint) konnte
-bisher NICHT mit echten Zugangsdaten verifiziert werden. Als Erfolgssignal
-wird daher verwendet: die URL wechselt weg von der Login-Seite UND es
-erscheint keine Fehlermeldung. Beim ersten echten Lauf bitte pruefen, ob
-das zuverlaessig ist -- Screenshot wird in jedem Fall nach ./logs/
-geschrieben.
+Der Erfolgsfall (welche Seite/welches Element nach echtem Login erscheint)
+konnte bisher NICHT mit echten Zugangsdaten verifiziert werden. Als
+Erfolgssignal wird daher verwendet: die URL wechselt weg von der
+Login-Seite UND es erscheint keine Fehlermeldung. Beim ersten echten Lauf
+bitte pruefen, ob das zuverlaessig ist -- Screenshot wird bei einem Fehler
+in jedem Fall nach ./logs/ geschrieben.
 """
 
 import argparse
-import json
+import os
 import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
-import os
+from playwright.sync_api import sync_playwright
 
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+from portals.durchblicker import DurchblickerPortal, LOGIN_URL, dismiss_cookie_banner
 
 BASE_DIR = Path(__file__).resolve().parent
 STATE_DIR = BASE_DIR / "state"
 LOGS_DIR = BASE_DIR / "logs"
 STATE_FILE = STATE_DIR / "storage_state.json"
-
-LOGIN_URL = "https://durchblicker.at/konto/auth/anmelden"
-
-COOKIE_ACCEPT_NAME = "Alle Cookies akzeptieren"
-ERROR_SELECTOR = ".alert.error-container .error-message"
-
-
-def dismiss_cookie_banner(page):
-    try:
-        page.get_by_role("button", name=COOKIE_ACCEPT_NAME).click(timeout=8000)
-    except PlaywrightTimeoutError:
-        pass
 
 
 def save_state(context):
@@ -75,22 +49,11 @@ def run_auto_login(playwright, email, password):
     context = browser.new_context()
     page = context.new_page()
 
-    page.goto(LOGIN_URL, wait_until="networkidle")
-    dismiss_cookie_banner(page)
-
-    page.fill("#login-email", email)
-    page.fill("#login-password", password)
-    page.click("#login-container-form-cta")
-
+    portal = DurchblickerPortal()
     try:
-        page.wait_for_url(lambda url: url != LOGIN_URL, timeout=20000)
-    except PlaywrightTimeoutError:
-        error_el = page.query_selector(ERROR_SELECTOR)
-        if error_el:
-            error_text = error_el.inner_text().strip()
-            fail(page, f"Login fehlgeschlagen: {error_text}")
-        else:
-            fail(page, "Login-Ergebnis nach 20s nicht eindeutig (keine Navigation, keine erkannte Fehlermeldung).")
+        portal.login(page, email, password)
+    except RuntimeError as e:
+        fail(page, str(e))
 
     print(f"Login erfolgreich, aktuelle URL: {page.url}")
     save_state(context)

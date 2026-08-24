@@ -126,6 +126,7 @@ URL: `/autoversicherung/vergleich/produkt/leistungsumfang`
 |---|---|---|---|---|---|
 | Deckungsumfang | 2 Checkboxen (kein stabiles Attribut außer Position) | Checkbox | — | "Haftpflicht" (per Default aktiv/angehakt, wirkt Pflicht) + "Kasko" (optional zuschaltbar) | **Wichtig:** anders als vom Projektauftrag angenommen ist "Haftpflicht/Teilkasko/Vollkasko" HIER keine 3er-Auswahl, sondern Haftpflicht (Pflicht) + optionale Kasko-Zusatzdeckung |
 | Gewünschter Versicherungsschutz | `input[name="auto.produkt.auswahl-radiogroup"]` (nth 0 = durchblicker Empfehlung, nth 1 = Günstiger Preis, nth 2 = Deckungen selbst festlegen) | Radio | ja | 3 Optionen, s. links. Kein Default vorausgewählt — Weiter-Klick ohne Auswahl bleibt auf der Seite | — |
+| Kaskovariante | `input[name="auto.produkt.kaskodeckung-radiogroup"]` (nth 0 = Vollkasko, nth 1 = Teilkasko) | Radio | **bedingt** | Erscheint/blockiert nur, wenn die Kasko-Checkbox am Ende AKTIV ist. **Wichtig, live entdeckt am 2026-08-24:** "durchblicker Empfehlung" kann Kasko fuer ein Fahrzeug selbststaendig vorschlagen und die Checkbox VORBELEGEN, unabhaengig davon, was `fall.json` will (beobachtet bei einem 2021er-Fahrzeug mit Sonderausstattung; beim 2020er-Testfall ohne Sonderausstattung geschah das nicht). fill.py MUSS die Checkbox daher aktiv auf den Sollwert setzen (an UND aus), nicht nur ergaenzend anhaken. Die Radiogruppe bleibt auch bei ausgeschaltetem Kasko im DOM (nur nicht mehr blockierend) — pruefbar ist NICHT ihre DOM-Praesenz, sondern der tatsaechliche Checkbox-Zustand. | nur relevant wenn Kasko aktiv |
 | **TODO — nicht erkundet:** was "Deckungen selbst festlegen" für Folgefelder öffnet (vermutlich Selbstbehalt, Zusatzbausteine — genau die Felder aus dem ursprünglichen Datenmodell-Entwurf) | — | — | — | — |
 
 ---
@@ -144,6 +145,7 @@ Ergebnis" statt "Weiter" — wurde NICHT geklickt).
 | Nationalität | `#auto.vn.nation-combobox` | Combobox (durchsuchbar) | ja | Default "Österreich". Weitere Optionen nicht gedumpt (TODO) | — |
 | Postleitzahl | `#auto.vn.region.plz` (name-Attribut identisch: `auto.vn.region.plz`) | Text | ja | Placeholder "Postleitzahl" — vermutlich 4-stellig AT, Format nicht am Feld selbst erzwungen gesehen (TODO: Grenzfall testen, z.B. 3-stellig) | — |
 | E-Mail | `#auto.vn.mail` (name: `auto.vn.mail`) | Email (`type=email`) | ja | Standard-E-Mail-Format | — |
+| Telefonnummer | nicht erfasst (live am 2026-08-24 im Screenshot gesehen, Placeholder "0660123456") | Text | **nein** | Feld bleibt leer, blockiert "Zum Ergebnis" nicht — daher (noch) nicht Teil von fall.schema.json/fill.py. TODO: Locator verifizieren, falls spaeter gewuenscht. | — |
 | **NICHT vorhanden:** "Führerschein seit" | — | — | — | Im ursprünglichen Datenmodell-Entwurf angenommen, kommt in diesem Wizard-Pfad **nicht vor**. Nicht raten/erfinden — ggf. taucht es im "Einzelunternehmen"-Zweig oder in einem späteren, hier nicht erreichten Schritt auf. | — |
 
 ---

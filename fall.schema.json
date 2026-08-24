@@ -158,7 +158,14 @@
       "properties": {
         "kasko_zusatzdeckung": {
           "$ref": "#/$defs/feldBoolean",
-          "description": "Optionale Kasko-Zusatzdeckung (Haftpflicht ist am Formular immer aktiv/Pflicht und daher hier kein eigenes Feld)."
+          "description": "Optionale Kasko-Zusatzdeckung (Haftpflicht ist am Formular immer aktiv/Pflicht und daher hier kein eigenes Feld). WICHTIG: 'durchblicker Empfehlung' kann Kasko selbststaendig vorschlagen und die Checkbox unabhaengig von diesem Feld vorbelegen -- fill.py MUSS den tatsaechlichen Checkbox-Zustand aktiv auf diesen Sollwert setzen (in beide Richtungen), nicht nur ergaenzend anhaken. Live entdeckt am 2026-08-24."
+        },
+        "kaskovariante": {
+          "allOf": [
+            { "$ref": "#/$defs/extrahiertesFeld" },
+            { "properties": { "wert": { "type": ["string", "null"], "enum": ["Vollkasko", "Teilkasko", null] } } }
+          ],
+          "description": "Nur relevant, wenn Kasko am Ende aktiv ist (durch kasko_zusatzdeckung=true ODER weil 'durchblicker Empfehlung' es fuer dieses Fahrzeug selbst vorschlaegt -- erst zur Laufzeit bekannt, siehe feldkarte.md). fill.py bricht mit Klartext-Fehler ab, wenn das Formular diese Auswahl verlangt, aber kein Wert gesetzt ist."
         },
         "versicherungsschutz_praeferenz": {
           "allOf": [

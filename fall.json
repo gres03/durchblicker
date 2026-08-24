@@ -109,6 +109,11 @@
       "quelle": "",
       "sicher": false
     },
+    "kaskovariante": {
+      "wert": null,
+      "quelle": "nur relevant falls 'durchblicker Empfehlung' fuer dieses Fahrzeug Kasko vorschlaegt, siehe feldkarte.md",
+      "sicher": false
+    },
     "versicherungsschutz_praeferenz": {
       "wert": "durchblicker Empfehlung",
       "quelle": "",

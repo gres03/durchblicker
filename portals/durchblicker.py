@@ -258,11 +258,37 @@ class DurchblickerPortal(KfzPortal):
             _lies_enum_radio(produkt_radios, ["durchblicker Empfehlung", "Günstiger Preis", "Deckungen selbst festlegen"]),
         )
 
+        # "durchblicker Empfehlung" kann Kasko selbststaendig vorschlagen und
+        # die Checkbox unabhaengig von fall.json vorbelegen (live entdeckt
+        # 2026-08-24) -- daher aktiv auf den Sollwert setzen, in BEIDE
+        # Richtungen, nicht nur ergaenzend anhaken.
         kasko_gewuenscht = pr.get("kasko_zusatzdeckung", {}).get("wert") is True
         kasko = page.get_by_role("checkbox", name="Kasko", exact=True)
-        if kasko_gewuenscht and not kasko.is_checked():
+        if kasko.is_checked() != kasko_gewuenscht:
             kasko.click(timeout=8000)
         pruefe("produkt.kasko_zusatzdeckung", kasko_gewuenscht, kasko.is_checked())
+
+        # Wenn Kasko am Ende aktiv ist, verlangt das Formular zusaetzlich
+        # eine Kaskovariante (Vollkasko/Teilkasko) -- dieses Feld erscheint
+        # nur reaktiv, abhaengig von der Empfehlung fuer DIESES Fahrzeug,
+        # und kann daher nicht vorab in unterstuetzter_pfad() geprueft
+        # werden. Live entdeckt 2026-08-24. WICHTIG: die Radiogruppe bleibt
+        # auch bei ausgeschaltetem Kasko im DOM (nur nicht mehr blockierend
+        # fuer 'Weiter') -- pruefbar ist daher NICHT ihre DOM-Praesenz,
+        # sondern der tatsaechliche Kasko-Checkbox-Zustand.
+        kaskodeckung_radios = page.locator('input[name="auto.produkt.kaskodeckung-radiogroup"]')
+        if kasko.is_checked():
+            kaskovariante = pr.get("kaskovariante", {}).get("wert")
+            if kaskovariante not in ("Vollkasko", "Teilkasko"):
+                raise RuntimeError(
+                    "Das Formular verlangt fuer dieses Fahrzeug eine Kaskovariante "
+                    "(Vollkasko/Teilkasko), aber fall.json enthaelt keinen gueltigen "
+                    "Wert fuer produkt.kaskovariante. Bitte ergaenzen (siehe feldkarte.md)."
+                )
+            idx = {"Vollkasko": 0, "Teilkasko": 1}[kaskovariante]
+            kaskodeckung_radios.nth(idx).click(timeout=8000)
+            pruefe("produkt.kaskovariante", kaskovariante,
+                   _lies_enum_radio(kaskodeckung_radios, ["Vollkasko", "Teilkasko"]))
 
         _klick_weiter(page)
 

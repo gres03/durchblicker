@@ -36,6 +36,7 @@ ERLAUBTE_WERTE = {
         "durchblicker Empfehlung", "Günstiger Preis", "Deckungen selbst festlegen",
     ],
     "bonus_malus_stufe": ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9 - Einsteigerstufe"],
+    "kaskovariante": ["Vollkasko", "Teilkasko"],
 }
 
 # Felder mit vollstaendig bekanntem Katalog (ERLAUBTE_WERTE greift als
@@ -51,7 +52,7 @@ BOOLEAN_FELDER = {"zugelassen", "erstbesitzer", "zweitwagen", "kasko_zusatzdecku
 
 FAHRZEUG_FELDER = {"finanzierung", "zugelassen", "erstbesitzer"}
 VERSICHERUNGSNEHMER_FELDER = {"bonus_malus_stufe", "bestehende_versicherung", "nationalitaet", "zweitwagen", "anmeldung_als"}
-PRODUKT_FELDER = {"versicherungsschutz_praeferenz", "kasko_zusatzdeckung"}
+PRODUKT_FELDER = {"versicherungsschutz_praeferenz", "kasko_zusatzdeckung", "kaskovariante"}
 
 
 def _normalisieren(text):

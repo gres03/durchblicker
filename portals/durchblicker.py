@@ -145,11 +145,6 @@ class DurchblickerPortal(KfzPortal):
                 "fahrzeug.zugelassen: nur True/Ja implementiert (Neuanmeldung-Zweig nicht "
                 "erkundet, siehe feldkarte.md TODO #3)"
             )
-        if fz["erstbesitzer"]["wert"] is not False:
-            gruende.append(
-                "fahrzeug.erstbesitzer: nur False/Nein (Gebrauchtwagen) implementiert "
-                "(siehe feldkarte.md TODO #4)"
-            )
         if fz["finanzierung"]["wert"] != "Nein":
             gruende.append(
                 "fahrzeug.finanzierung: nur 'Nein' implementiert (Leasing/Kredit-Folgefelder "
@@ -213,18 +208,25 @@ class DurchblickerPortal(KfzPortal):
         zugelassen_radios.nth(0).click(timeout=8000)  # Ja
         pruefe("fahrzeug.zugelassen", fz["zugelassen"]["wert"], _lies_ja_nein(zugelassen_radios))
 
+        erstbesitzer_wert = fz["erstbesitzer"]["wert"]
         erstbesitzer_radios = page.locator('input[name="auto.fahrzeug.erstbesitzv-radiogroup"]')
-        erstbesitzer_radios.nth(1).click(timeout=8000)  # Nein
-        pruefe("fahrzeug.erstbesitzer", fz["erstbesitzer"]["wert"], _lies_ja_nein(erstbesitzer_radios))
+        erstbesitzer_radios.nth(0 if erstbesitzer_wert else 1).click(timeout=8000)
+        pruefe("fahrzeug.erstbesitzer", erstbesitzer_wert, _lies_ja_nein(erstbesitzer_radios))
 
-        page.wait_for_selector("#auto\\.fahrzeug\\.erstzulassungvnv", timeout=10000)
+        # Bei Erstbesitzer=Ja (fabriksneu) zeigt das Formular NUR
+        # 'Erstzulassung des PKW' -- das zweite Feld 'Erstzulassung auf
+        # Sie' existiert in diesem Zweig gar nicht im DOM, weil beide
+        # Daten fuer einen Erstbesitzer per Definition identisch sind.
+        # Live verifiziert 2026-08-25.
+        page.wait_for_selector("#auto\\.fahrzeug\\.erstzulassung", timeout=10000)
         _fuelle_segmentiertes_datum(page, "#auto\\.fahrzeug\\.erstzulassung", fz["erstzulassung_pkw"]["wert"])
         pruefe("fahrzeug.erstzulassung_pkw", fz["erstzulassung_pkw"]["wert"],
                _lies_segmentiertes_datum(page, "#auto\\.fahrzeug\\.erstzulassung"))
 
-        _fuelle_segmentiertes_datum(page, "#auto\\.fahrzeug\\.erstzulassungvnv", fz["erstzulassung_auf_sie"]["wert"])
-        pruefe("fahrzeug.erstzulassung_auf_sie", fz["erstzulassung_auf_sie"]["wert"],
-               _lies_segmentiertes_datum(page, "#auto\\.fahrzeug\\.erstzulassungvnv"))
+        if not erstbesitzer_wert:
+            _fuelle_segmentiertes_datum(page, "#auto\\.fahrzeug\\.erstzulassungvnv", fz["erstzulassung_auf_sie"]["wert"])
+            pruefe("fahrzeug.erstzulassung_auf_sie", fz["erstzulassung_auf_sie"]["wert"],
+                   _lies_segmentiertes_datum(page, "#auto\\.fahrzeug\\.erstzulassungvnv"))
 
         finanzierung_radios = page.locator('input[name="auto.fahrzeug.finanzierung-radiogroup"]')
         finanzierung_radios.nth(0).click(timeout=8000)  # Nein

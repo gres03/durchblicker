@@ -13,8 +13,9 @@ letzte Schritt vor "Zum Ergebnis" -- dieser Button wurde NICHT geklickt.
 
 **Nicht erkundete Nebenzweige** (siehe TODO-Liste am Ende): "Nein" bei
 zugelassen (Neuwagen-Anmeldung), "Marke und Modell" statt Zulassungscode,
-Erstbesitzer=Ja, Leasing/Kredit-Finanzierung, "Günstiger Preis"/"Deckungen
-selbst festlegen" statt Empfehlung, Kasko-Zusatzdeckung, Einzelunternehmen.
+Leasing/Kredit-Finanzierung, "Günstiger Preis"/"Deckungen selbst
+festlegen" statt Empfehlung, Einzelunternehmen. (Erstbesitzer=Ja und
+Kasko-Zusatzdeckung sind seit 2026-08-25 implementiert, siehe unten.)
 
 **Update Phase 4 (fill.py, live end-to-end getestet, siehe portals/durchblicker.py):**
 - Tippen-zum-Filtern in durchsuchbaren Comboboxen (Baujahr, Bestehende
@@ -95,10 +96,17 @@ URL: `/autoversicherung/vergleich/auto/zulassungsdaten`
 |---|---|---|---|---|---|
 | Ist das Fahrzeug bereits auf Sie zugelassen? | `input[name="auto.fahrzeug.zugelassen-radiogroup"]` (nth 0 = Ja, nth 1 = Nein) | Radio | ja | Ja / Nein. Hinweistext: "Die Zulassung muss in Österreich erfolgt sein." | erster sichtbarer Schritt |
 | Haben Sie das Fahrzeug fabriksneu gekauft? | `input[name="auto.fahrzeug.erstbesitzv-radiogroup"]` (nth 0 = Ja, nth 1 = Nein) | Radio | ja | Ja / Nein | erscheint erst nach "zugelassen" |
-| Erstzulassung des PKW | `#auto.fahrzeug.erstzulassung` (segmentiertes Datum, DIV role=combobox) | Datum | ja | TT/MM/JJJJ, war in unserem Testlauf mit Default vorbefüllt (02/01/2020, abgeleitet vom Baujahr) | erscheint nach "Erstbesitzer" = Nein |
-| Erstzulassung auf Sie (Feld-ID: `erstzulassungvnv`) | `#auto.fahrzeug.erstzulassungvnv` (segmentiertes Datum) | Datum | ja | TT/MM/JJJJ. **Muss >= "Erstzulassung des PKW" sein**, sonst Validierungsfehler "Bitte treffen Sie eine Auswahl" | erscheint nur wenn Erstbesitzer = Nein |
+| Erstzulassung des PKW | `#auto.fahrzeug.erstzulassung` (segmentiertes Datum, DIV role=combobox) | Datum | ja | TT/MM/JJJJ, war in unserem Testlauf mit Default vorbefüllt (02/01/2020, abgeleitet vom Baujahr) | erscheint bei Erstbesitzer = Ja UND Nein (immer) |
+| Erstzulassung auf Sie (Feld-ID: `erstzulassungvnv`) | `#auto.fahrzeug.erstzulassungvnv` (segmentiertes Datum) | Datum | ja, **nur wenn Erstbesitzer = Nein** | TT/MM/JJJJ. **Muss >= "Erstzulassung des PKW" sein**, sonst Validierungsfehler "Bitte treffen Sie eine Auswahl" | erscheint NICHT wenn Erstbesitzer = Ja -- logisch, da fuer einen Erstbesitzer beide Daten identisch sind. Live verifiziert 2026-08-25. |
 | Läuft für das Fahrzeug ein Leasingvertrag oder Kredit? | `input[name="auto.fahrzeug.finanzierung-radiogroup"]` (nth 0 = Nein, nth 1 = Leasing, nth 2 = Kredit) | Radio | ja | Nein / Leasing / Kredit | steht gleichzeitig mit den Erstbesitzer-Folgefeldern |
-| **TODO — nicht erkundet:** Zweig "Erstbesitzer = Ja" (vermutlich andere/weniger Folgefelder), Zweig "zugelassen = Nein" (Neuanmeldung, laut Tooltip "unterscheidet sich der weitere Ablauf"), Leasing/Kredit-Folgefelder | — | — | — | — |
+| **TODO — nicht erkundet:** Zweig "zugelassen = Nein" (Neuanmeldung, laut Tooltip "unterscheidet sich der weitere Ablauf"), Leasing/Kredit-Folgefelder | — | — | — | — |
+
+**Update 2026-08-25:** Zweig "Erstbesitzer = Ja" (fabriksneu) jetzt live
+erkundet und implementiert (`portals/durchblicker.py`). Ausgeloest durch
+einen echten Nutzerfall, der auf den TODO-Block traf. `erstbesitzv-radiogroup`
+nth 0 = Ja, nth 1 = Nein (wie zugelassen). End-to-end getestet: alle Felder
+verifiziert, `erstzulassungvnv` wird in diesem Zweig korrekt gar nicht erst
+angefasst.
 
 ---
 
@@ -158,7 +166,7 @@ Ergebnis" statt "Weiter" — wurde NICHT geklickt).
    Dokumente ohne lesbaren Nationalcode).
 3. Zweig "zugelassen = Nein" (Neuanmeldung) erkunden — laut Tooltip
    eigener Ablauf.
-4. Zweig "Erstbesitzer = Ja" erkunden.
+4. ~~Zweig "Erstbesitzer = Ja" erkunden.~~ Erledigt 2026-08-25.
 5. Leasing/Kredit-Folgefelder erkunden.
 6. "Deckungen selbst festlegen" erkunden — hier liegen vermutlich
    Selbstbehalt und weitere Versicherungsparameter aus dem Datenmodell.

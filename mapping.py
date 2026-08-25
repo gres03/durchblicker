@@ -236,12 +236,31 @@ def _leite_erstbesitzer_ab(fahrzeug):
     }
 
 
+def _bereinige_erstzulassung_auf_sie(fahrzeug):
+    """Ist der Halter Erstbesitzer, verlangt das Formular gar kein
+    eigenes 'Erstzulassung auf Sie'-Feld -- es ist per Definition
+    identisch mit 'Erstzulassung des PKW' (live verifiziert 2026-08-25,
+    siehe portals/durchblicker.py). Ein noch offenes
+    erstzulassung_auf_sie ist in diesem Fall kein Klaerungsbedarf mehr,
+    sondern schlicht nicht anwendbar."""
+    if fahrzeug.get("erstbesitzer", {}).get("wert") is not True:
+        return
+    feld = fahrzeug.get("erstzulassung_auf_sie", {})
+    if feld.get("sicher") is False and feld.get("wert") in (None, ""):
+        fahrzeug["erstzulassung_auf_sie"] = {
+            "wert": None,
+            "quelle": "nicht relevant, da Erstbesitzer (identisch mit Erstzulassung des PKW)",
+            "sicher": True,
+        }
+
+
 def map_fall(rohdaten):
     synonyme = lade_synonyme()
 
     fahrzeug = _mappe_abschnitt(rohdaten.get("fahrzeug", {}), FAHRZEUG_FELDER, synonyme)
     fahrzeug["identifikationsmethode"] = bestimme_identifikationsmethode(rohdaten.get("fahrzeug", {}))
     _leite_erstbesitzer_ab(fahrzeug)
+    _bereinige_erstzulassung_auf_sie(fahrzeug)
 
     versicherungsnehmer = _mappe_abschnitt(
         rohdaten.get("versicherungsnehmer", {}), VERSICHERUNGSNEHMER_FELDER, synonyme

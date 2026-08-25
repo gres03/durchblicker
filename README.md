@@ -64,8 +64,25 @@ nacheinander aus (dieselben Funktionen, die auch `app.py` fuer die
 Web-Oberflaeche wiederverwendet). Ist ein Fall von Anfang an vollstaendig
 und plausibel, laeuft das komplett ohne jede Eingabe durch; nur bei
 tatsaechlichem Klaerungsbedarf (siehe `confirm.py` unten) wird kurz
-nachgefragt. Die einzelnen Schritte lassen sich weiterhin separat aufrufen
-(z.B. zum Debuggen):
+nachgefragt.
+
+**Formular-Standards statt Rueckfrage:** `mapping.py` (`_wende_formular_standards_an`)
+uebernimmt bei vier Feldern automatisch einen unbedenklichen Formular-Default,
+wenn das Dokument dazu nichts hergibt, statt nachzufragen: Bonus/Malus-Stufe
+(Standard "9 - Einsteigerstufe", entspricht dem Formular-Default selbst),
+Sonderausstattung (Slider-Default bleibt unveraendert), Kasko-Zusatzdeckung
+(Standard: keine, damit nichts ungefragt zugebucht wird) und Nationalitaet
+(Standard "Österreich"). Das ist bewusst NICHT geraten, sondern die
+jeweils sicherste/am wenigsten unterstellende Annahme -- transparent
+sichtbar am `quelle`-Text jedes so gesetzten Felds. Alle anderen Felder
+(Geburtsdatum, PLZ, Nationalcode, Zulassungsdaten, Finanzierung, bestehende
+Versicherung, Zweitwagen, Kaskovariante bei aktiver Kaskodeckung, ...)
+bleiben bei Unklarheit weiterhin zwingend klaerungsbeduerftig, da ein
+falscher Wert dort die Versicherungsberechnung inhaltlich verfaelschen
+wuerde.
+
+Die einzelnen Schritte lassen sich weiterhin separat aufrufen (z.B. zum
+Debuggen):
 
 1. `python mapping.py rohdaten.json -o fall.json` -- uebersetzt Freitext in
    exakte Formularwerte.

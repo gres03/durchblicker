@@ -142,6 +142,53 @@ def bestimme_identifikationsmethode(fahrzeug_rohdaten):
     return {"wert": None, "quelle": "", "sicher": False}
 
 
+# Felder, bei denen eine fehlende Angabe im Dokument NICHT zur Klaerung
+# vorgelegt werden muss, weil entweder (a) der durchblicker.at-Rechner
+# selbst schon einen Standardwert vorbelegt (Bonus/Malus-Stufe,
+# Sonderausstattung-Slider) oder (b) die sicherste/am wenigsten
+# unterstellende Annahme eindeutig ist (keine ungefragte Zusatzdeckung,
+# oesterreichisches Portal). Das ist KEIN Raten von Dokumentinhalt --
+# es wird nur davon abgesehen, einen ohnehin vorhandenen Formular-Default
+# ohne Not zu ueberschreiben oder eine Ablehnung zu unterstellen.
+#
+# Bewusst NICHT in dieser Liste: alles, was die Versicherung inhaltlich
+# veraendert und keinen harmlosen Formular-Default hat (Geburtsdatum, PLZ,
+# E-Mail, Nationalcode, Zulassungsdaten, Finanzierung, bestehende
+# Versicherung, Zweitwagen, Kaskovariante bei aktiver Kaskodeckung) --
+# dort bleibt jede Unklarheit weiterhin klaerungsbeduerftig.
+def _wende_formular_standards_an(fahrzeug, versicherungsnehmer, produkt):
+    def ist_offen(feld):
+        return feld.get("sicher") is False and feld.get("wert") in (None, "")
+
+    if ist_offen(versicherungsnehmer.get("bonus_malus_stufe", {})):
+        versicherungsnehmer["bonus_malus_stufe"] = {
+            "wert": "9 - Einsteigerstufe",
+            "quelle": "nicht im Dokument angegeben -- Formular-Standard fuer Neueinsteiger uebernommen",
+            "sicher": True,
+        }
+
+    if ist_offen(fahrzeug.get("sonderausstattung_wert", {})):
+        fahrzeug["sonderausstattung_wert"] = {
+            "wert": None,
+            "quelle": "nicht im Dokument angegeben -- Slider-Standard des Formulars bleibt unveraendert",
+            "sicher": True,
+        }
+
+    if ist_offen(produkt.get("kasko_zusatzdeckung", {})):
+        produkt["kasko_zusatzdeckung"] = {
+            "wert": False,
+            "quelle": "nicht im Dokument angegeben -- Standard: nur Haftpflicht, keine ungefragte Zusatzdeckung",
+            "sicher": True,
+        }
+
+    if ist_offen(versicherungsnehmer.get("nationalitaet", {})):
+        versicherungsnehmer["nationalitaet"] = {
+            "wert": "Österreich",
+            "quelle": "nicht im Dokument angegeben -- Formular-Standard (österreichisches Portal) uebernommen",
+            "sicher": True,
+        }
+
+
 def map_fall(rohdaten):
     synonyme = lade_synonyme()
 
@@ -153,6 +200,9 @@ def map_fall(rohdaten):
     )
 
     produkt = _mappe_abschnitt(rohdaten.get("produkt", {}), PRODUKT_FELDER, synonyme)
+
+    _wende_formular_standards_an(fahrzeug, versicherungsnehmer, produkt)
+
     if produkt.get("kasko_zusatzdeckung", {}).get("wert") is False:
         # kaskovariante ist nur relevant, wenn Kasko am Ende aktiv ist (siehe
         # portals/durchblicker.py). Ist Kasko klar abgelehnt, ist ein leerer

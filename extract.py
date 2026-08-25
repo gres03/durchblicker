@@ -69,7 +69,20 @@ WICHTIGE REGELN:
   RATE NIEMALS einen Wert -- ein falscher Wert in einer
   Versicherungsberechnung ist schlimmer als ein leeres Feld, das später
   nachgetragen wird.
-- Datumsangaben immer im Format JJJJ-MM-TT.
+- Datumsangaben immer im Format JJJJ-MM-TT. Oesterreichische/deutsche
+  Dokumente schreiben Datum als TT.MM.JJJJ (Tag zuerst) -- NICHT als
+  US-Format MM/TT/JJJJ verwechseln.
+- Nationalcode (Feld A7): besonders sorgfaeltig lesen, da dieser Wert das
+  Fahrzeug eindeutig bestimmt und ein einziges falsch gelesenes Zeichen zum
+  falschen Auto fuehrt. Bei Verwechslungsgefahr (0/O, 1/I/l, 5/S, 8/B) im
+  Zweifel "sicher": false setzen statt zu raten.
+- "erstbesitzer" (Ja = fabriksneu/Erstbesitzer): Formulierungen wie "Anzahl
+  bisheriger Halter: 1" sind MEHRDEUTIG (koennte "ich bin Halter Nr. 1" ODER
+  "es gab 1 Halter vor mir" bedeuten) -- in diesem Fall IMMER
+  "sicher": false setzen, nie interpretieren.
+- Bevor du antwortest: geh das Dokument noch einmal komplett durch und
+  vergleiche jeden extrahierten Wert mit der Originalstelle, bevor du die
+  finale Antwort gibst.
 """
 
 

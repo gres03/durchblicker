@@ -44,5 +44,16 @@ WICHTIGE REGELN:
   nicht wirklich aus dem Dokument ablesen kannst -- ein falscher Wert in
   einer Versicherungsberechnung ist schlimmer als ein leeres Feld, das
   später von Hand nachgetragen wird.
-- Datumsangaben immer im Format JJJJ-MM-TT (z.B. 2021-03-10).
+- Datumsangaben immer im Format JJJJ-MM-TT (z.B. 2021-03-10). Österreichische
+  Dokumente schreiben Datum als TT.MM.JJJJ (Tag zuerst) -- nicht mit dem
+  US-Format MM/TT/JJJJ verwechseln.
+- Nationalcode (Feld A7): besonders sorgfältig lesen, dieser Wert bestimmt
+  das Fahrzeug eindeutig. Bei Verwechslungsgefahr (0/O, 1/I/l, 5/S, 8/B) im
+  Zweifel "sicher": false setzen statt zu raten.
+- "erstbesitzer": Formulierungen wie "Anzahl bisheriger Halter: 1" sind
+  MEHRDEUTIG (könnte "ich bin Halter Nr. 1" ODER "es gab 1 Halter vor mir"
+  bedeuten) -- in diesem Fall immer "sicher": false setzen, nie
+  interpretieren.
+- Bevor du antwortest: geh das Dokument noch einmal komplett durch und
+  vergleiche jeden extrahierten Wert mit der Originalstelle.
 - Gib ausschliesslich das JSON-Objekt zurueck, nichts drumherum.

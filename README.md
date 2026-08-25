@@ -67,19 +67,33 @@ tatsaechlichem Klaerungsbedarf (siehe `confirm.py` unten) wird kurz
 nachgefragt.
 
 **Formular-Standards statt Rueckfrage:** `mapping.py` (`_wende_formular_standards_an`)
-uebernimmt bei vier Feldern automatisch einen unbedenklichen Formular-Default,
+uebernimmt bei fuenf Feldern automatisch einen unbedenklichen Formular-Default,
 wenn das Dokument dazu nichts hergibt, statt nachzufragen: Bonus/Malus-Stufe
 (Standard "9 - Einsteigerstufe", entspricht dem Formular-Default selbst),
 Sonderausstattung (Slider-Default bleibt unveraendert), Kasko-Zusatzdeckung
-(Standard: keine, damit nichts ungefragt zugebucht wird) und Nationalitaet
-(Standard "Österreich"). Das ist bewusst NICHT geraten, sondern die
-jeweils sicherste/am wenigsten unterstellende Annahme -- transparent
-sichtbar am `quelle`-Text jedes so gesetzten Felds. Alle anderen Felder
-(Geburtsdatum, PLZ, Nationalcode, Zulassungsdaten, Finanzierung, bestehende
-Versicherung, Zweitwagen, Kaskovariante bei aktiver Kaskodeckung, ...)
-bleiben bei Unklarheit weiterhin zwingend klaerungsbeduerftig, da ein
-falscher Wert dort die Versicherungsberechnung inhaltlich verfaelschen
-wuerde.
+und Finanzierung (Standard jeweils "Nein"/keine, damit nichts ungefragt
+unterstellt wird) und Nationalitaet (Standard "Österreich"). Das ist bewusst
+NICHT geraten, sondern die jeweils sicherste/am wenigsten unterstellende
+Annahme -- transparent sichtbar am `quelle`-Text jedes so gesetzten Felds.
+
+**Ableitung statt Rueckfrage:** `mapping.py` (`_leite_erstbesitzer_ab`) bestimmt
+"Erstbesitzer" automatisch aus zwei bereits vorhandenen Datumsangaben, wenn
+BEIDE sicher vorliegen: sind "Erstzulassung des PKW" und "Zulassung auf den
+Halter" identisch, ist der Halter zwangslaeufig Erstbesitzer, sind sie
+unterschiedlich, zwangslaeufig nicht. Das ist Logik aus vorhandenen Fakten,
+kein Raten -- fehlt eine der beiden Daten, bleibt das Feld weiterhin
+klaerungsbeduerftig statt eine falsche Sicherheit vorzutaeuschen.
+
+Alle anderen Felder (Geburtsdatum, PLZ, Nationalcode, ob das Fahrzeug
+ueberhaupt schon zugelassen ist, bestehende Versicherung, Zweitwagen,
+Kaskovariante bei aktiver Kaskodeckung, ...) bleiben bei Unklarheit
+weiterhin zwingend klaerungsbeduerftig: entweder weil es eine
+Pflichtfrage des Rechners ohne Formular-Default ist (z.B. "bereits
+zugelassen?" -- unser Code unterstuetzt bisher nur den Ja-Zweig), oder
+weil es eine reine Kundenauskunft ist, die auf keinem Fahrzeugdokument
+steht (bestehende Versicherung, Zweitwagen im Haushalt) und daher so oder
+so vom Kunden/Berater kommen muss, egal wie gut die Dokumentenerkennung
+ist.
 
 Die einzelnen Schritte lassen sich weiterhin separat aufrufen (z.B. zum
 Debuggen):

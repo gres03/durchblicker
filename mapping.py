@@ -153,9 +153,12 @@ def bestimme_identifikationsmethode(fahrzeug_rohdaten):
 #
 # Bewusst NICHT in dieser Liste: alles, was die Versicherung inhaltlich
 # veraendert und keinen harmlosen Formular-Default hat (Geburtsdatum, PLZ,
-# E-Mail, Nationalcode, Zulassungsdaten, Finanzierung, bestehende
-# Versicherung, Zweitwagen, Kaskovariante bei aktiver Kaskodeckung) --
-# dort bleibt jede Unklarheit weiterhin klaerungsbeduerftig.
+# E-Mail, Nationalcode, Zulassungsdaten (ausser der Ableitung unten),
+# bestehende Versicherung, Zweitwagen, Kaskovariante bei aktiver
+# Kaskodeckung, ob das Fahrzeug ueberhaupt schon zugelassen ist) -- dort
+# bleibt jede Unklarheit weiterhin klaerungsbeduerftig, weil es entweder
+# eine Pflichtfrage ohne Formular-Default ist oder eine reine
+# Kundenauskunft, die auf keinem Fahrzeugdokument steht.
 def _wende_formular_standards_an(fahrzeug, versicherungsnehmer, produkt):
     def ist_offen(feld):
         return feld.get("sicher") is False and feld.get("wert") in (None, "")
@@ -188,12 +191,49 @@ def _wende_formular_standards_an(fahrzeug, versicherungsnehmer, produkt):
             "sicher": True,
         }
 
+    if ist_offen(fahrzeug.get("finanzierung", {})):
+        fahrzeug["finanzierung"] = {
+            "wert": "Nein",
+            "quelle": "nicht im Dokument angegeben -- Standard: keine Leasing-/Kreditfinanzierung unterstellt",
+            "sicher": True,
+        }
+
+
+def _leite_erstbesitzer_ab(fahrzeug):
+    """'Erstbesitzer' ist keine Vermutung, sondern eine Ableitung aus zwei
+    bereits vorhandenen Datumsangaben: sind 'Erstzulassung des PKW' und
+    'Zulassung auf den Halter' identisch, ist der Halter zwangslaeufig der
+    Erstbesitzer -- sind sie unterschiedlich, zwangslaeufig nicht. Nur
+    anwendbar, wenn BEIDE Daten sicher vorliegen; fehlt eines, bleibt das
+    Feld unveraendert (weiterhin klaerungsbeduerftig)."""
+    erstbesitzer = fahrzeug.get("erstbesitzer", {})
+    if not (erstbesitzer.get("sicher") is False and erstbesitzer.get("wert") is None):
+        return
+
+    erstzulassung_pkw = fahrzeug.get("erstzulassung_pkw", {})
+    erstzulassung_auf_sie = fahrzeug.get("erstzulassung_auf_sie", {})
+    if not (erstzulassung_pkw.get("sicher") and erstzulassung_auf_sie.get("sicher")):
+        return
+    if not (erstzulassung_pkw.get("wert") and erstzulassung_auf_sie.get("wert")):
+        return
+
+    ist_erstbesitzer = erstzulassung_pkw["wert"] == erstzulassung_auf_sie["wert"]
+    fahrzeug["erstbesitzer"] = {
+        "wert": ist_erstbesitzer,
+        "quelle": (
+            f"abgeleitet: Erstzulassung PKW ({erstzulassung_pkw['wert']}) "
+            f"{'=' if ist_erstbesitzer else '!='} Zulassung auf Halter ({erstzulassung_auf_sie['wert']})"
+        ),
+        "sicher": True,
+    }
+
 
 def map_fall(rohdaten):
     synonyme = lade_synonyme()
 
     fahrzeug = _mappe_abschnitt(rohdaten.get("fahrzeug", {}), FAHRZEUG_FELDER, synonyme)
     fahrzeug["identifikationsmethode"] = bestimme_identifikationsmethode(rohdaten.get("fahrzeug", {}))
+    _leite_erstbesitzer_ab(fahrzeug)
 
     versicherungsnehmer = _mappe_abschnitt(
         rohdaten.get("versicherungsnehmer", {}), VERSICHERUNGSNEHMER_FELDER, synonyme

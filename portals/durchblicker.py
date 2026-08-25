@@ -95,14 +95,45 @@ def _waehle_direkt(page, trigger_selector, text):
 
 
 def _waehle_durchsuchbar(page, trigger_selector, text):
-    """Fuer virtualisierte/durchsuchbare Comboboxen (Baujahr, Versicherer):
-    Tippen filtert die Liste (live verifiziert), dann exakte Option
-    klicken. Playwright normalisiert dabei mehrzeilige Optionstexte
-    (z.B. 'Wiener\\nStädtische') automatisch zu einem Leerzeichen beim
-    Namensvergleich."""
+    """Fuer virtualisierte/durchsuchbare Comboboxen (Baujahr, Versicherer,
+    Marke, Modell): Tippen filtert die Liste (live verifiziert), dann
+    exakte Option klicken. Playwright normalisiert dabei mehrzeilige
+    Optionstexte (z.B. 'Wiener\\nStädtische') automatisch zu einem
+    Leerzeichen beim Namensvergleich.
+
+    Faellt der case-sensitive exakte Treffer aus (z.B. Dokument liefert
+    'PEUGEOT' in Grossbuchstaben, Formular zeigt 'Peugeot' -- live
+    beobachtet 2026-08-25), wird NICHT geraten, sondern unter den nach
+    dem Tippen tatsaechlich angezeigten Optionen nach einem einzigen
+    case-insensitiven Text-Treffer gesucht. Gibt es keinen oder mehr als
+    einen solchen Treffer, wird klar abgebrochen statt eine falsche
+    Option zu waehlen."""
     page.click(trigger_selector, timeout=10000)
     page.keyboard.type(text)
-    page.get_by_role("option", name=text, exact=True).click(timeout=10000)
+    exakt = page.get_by_role("option", name=text, exact=True)
+    try:
+        exakt.click(timeout=6000)
+        return
+    except PlaywrightTimeoutError:
+        pass
+
+    optionen = page.get_by_role("option").all()
+    text_norm = " ".join(text.split()).casefold()
+    treffer = [o for o in optionen if " ".join(o.inner_text().split()).casefold() == text_norm]
+    if len(treffer) == 1:
+        treffer[0].click(timeout=10000)
+        return
+    if len(treffer) == 0:
+        gefunden = [o.inner_text() for o in optionen]
+        raise RuntimeError(
+            f"Keine passende Option fuer '{text}' gefunden (auch nicht "
+            f"gross-/kleinschreibungs-unabhaengig). Angezeigte Optionen: {gefunden}"
+        )
+    gefunden = [o.inner_text() for o in treffer]
+    raise RuntimeError(
+        f"Mehrdeutig: '{text}' passt gross-/kleinschreibungs-unabhaengig auf "
+        f"mehrere Optionen: {gefunden}"
+    )
 
 
 def _klick_weiter(page):
@@ -273,8 +304,15 @@ class DurchblickerPortal(KfzPortal):
         fz, vn, pr = fall["fahrzeug"], fall["versicherungsnehmer"], fall["produkt"]
         zeilen = []
 
-        def pruefe(pfad, soll, ist):
-            zeilen.append({"pfad": pfad, "soll": soll, "ist": ist, "ok": soll == ist})
+        def pruefe(pfad, soll, ist, ignore_case=False):
+            """ignore_case=True fuer Freitext-Comboboxen (Marke, Modell,
+            Versicherer), deren Formular-Optionen eine feste eigene
+            Schreibweise haben (z.B. 'Peugeot' statt 'PEUGEOT' aus dem
+            Dokument) -- die Auswahl selbst ist bereits durch
+            _waehle_durchsuchbar() eindeutig verifiziert, nur die
+            Gross-/Kleinschreibung darf hier noch abweichen."""
+            ok = soll.casefold() == ist.casefold() if ignore_case and isinstance(soll, str) and isinstance(ist, str) else soll == ist
+            zeilen.append({"pfad": pfad, "soll": soll, "ist": ist, "ok": ok})
 
         def pruefe_kaskade(pfad, soll, ist, praefix_ok=False):
             """Wie pruefe(), aber fuer die 'Marke und Modell'-Kaskade: war
@@ -321,10 +359,10 @@ class DurchblickerPortal(KfzPortal):
             page.get_by_text("Marke und Modell", exact=False).click(timeout=10000)
 
             _waehle_durchsuchbar(page, "#auto\\.fahrzeug\\.marke-combobox", fz["marke"]["wert"])
-            pruefe("fahrzeug.marke", fz["marke"]["wert"], page.input_value("#auto\\.fahrzeug\\.marke-combobox"))
+            pruefe("fahrzeug.marke", fz["marke"]["wert"], page.input_value("#auto\\.fahrzeug\\.marke-combobox"), ignore_case=True)
 
             _waehle_durchsuchbar(page, "#auto\\.fahrzeug\\.modell-combobox", fz["modell"]["wert"])
-            pruefe("fahrzeug.modell", fz["modell"]["wert"], page.input_value("#auto\\.fahrzeug\\.modell-combobox"))
+            pruefe("fahrzeug.modell", fz["modell"]["wert"], page.input_value("#auto\\.fahrzeug\\.modell-combobox"), ignore_case=True)
 
             treibstoff_soll = fz.get("treibstoff", {}).get("wert")
             treibstoff_ist = _waehle_falls_leer(
@@ -399,7 +437,7 @@ class DurchblickerPortal(KfzPortal):
 
         _waehle_durchsuchbar(page, "#auto\\.vn\\.versicherer-combobox", vn["bestehende_versicherung"]["wert"])
         pruefe("versicherungsnehmer.bestehende_versicherung", vn["bestehende_versicherung"]["wert"],
-               page.input_value("#auto\\.vn\\.versicherer-combobox"))
+               page.input_value("#auto\\.vn\\.versicherer-combobox"), ignore_case=True)
 
         zweitwagen_index = 0 if vn["zweitwagen"]["wert"] else 1
         zweitwagen_radios = page.locator('input[name="auto.rabatte.zweitwagen-radiogroup"]')

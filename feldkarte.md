@@ -38,6 +38,24 @@ ausgewaehlt werden muss. Deutlich aufwaendiger als der Nationalcode-Weg:
 - Siehe `portals/durchblicker.py` (`_waehle_falls_leer`,
   `_waehle_aus_ergebnisliste`) und `fall.schema.json` (neue Felder
   treibstoff, motorleistung_kw, bauart, tueren, variante jetzt nutzbar).
+- **Bug gefunden + gefixt (echter Nutzerfall, 2026-08-25):** Marke-Feld
+  "PEUGEOT" aus einem echten Zulassungsschein (Grossbuchstaben-Druck)
+  wurde nie gefunden -- Playwrights `exact=True`-Namensvergleich ist
+  case-sensitiv, das Formular zeigt aber "Peugeot" (Live-Probe bestaetigt:
+  genau 1 Option nach Tippen von "PEUGEOT", Text exakt "Peugeot").
+  `Locator.click: Timeout ... waiting for get_by_role("option",
+  name="PEUGEOT", exact=True)`. Fix in `_waehle_durchsuchbar`: nach
+  fehlgeschlagenem case-sensitivem Treffer wird unter den nach dem Tippen
+  tatsaechlich angezeigten Optionen nach genau einem case-insensitiven
+  Text-Treffer gesucht (kein Raten -- 0 oder >1 Treffer brechen weiterhin
+  klar ab). Betrifft alle durchsuchbaren Freitext-Comboboxen (Marke,
+  Modell, Bestehende Versicherung); die zugehoerige Soll/Ist-Verifikation
+  (`pruefe(..., ignore_case=True)`) vergleicht dort ebenfalls
+  gross-/kleinschreibungs-unabhaengig, damit keine falschen
+  Abweichungs-Warnungen entstehen. End-to-end nachgetestet: Peugeot 208,
+  Benzin, 55 kW, Bauart/Tueren automatisch aufgeloest, Variante "208 Like
+  PureTech 75 S&S" unter 3 Ergebniszeilen eindeutig getroffen -- alle 22
+  Felder verifiziert.
 
 **Update Phase 4 (fill.py, live end-to-end getestet, siehe portals/durchblicker.py):**
 - Tippen-zum-Filtern in durchsuchbaren Comboboxen (Baujahr, Bestehende

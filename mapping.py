@@ -81,13 +81,21 @@ def map_enum(feldname, rohtext, synonyme):
         return None, False
     norm = _normalisieren(rohtext)
 
+    # Fuehrende Nullen normalisieren (z.B. "04" -> "4"), aber nur bei rein
+    # numerischem Text -- verhindert, dass z.B. "04" mangels Treffer als
+    # unsicher durchfaellt, obwohl es eindeutig "4" meint.
+    kandidaten = [norm]
+    if norm.isdigit() and str(int(norm)) != norm:
+        kandidaten.append(str(int(norm)))
+
     tabelle = synonyme.get(feldname, {})
-    if norm in tabelle:
-        return tabelle[norm], True
+    for kandidat in kandidaten:
+        if kandidat in tabelle:
+            return tabelle[kandidat], True
 
     if feldname in ENUM_FELDER:
         for erlaubt in ERLAUBTE_WERTE[feldname]:
-            if _normalisieren(erlaubt) == norm:
+            if _normalisieren(erlaubt) in kandidaten:
                 return erlaubt, True
 
     # kein Treffer -- weder Synonym noch (falls vorhanden) exakter Katalogwert

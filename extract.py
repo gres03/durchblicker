@@ -56,12 +56,19 @@ dieser Struktur:
   },
   "produkt": {
     "kasko_zusatzdeckung": {"wert": "Ja" oder "Nein", "quelle": "...", "sicher": true/false},
-    "kaskovariante": {"wert": null, "quelle": "", "sicher": true},
+    "kaskovariante": {"wert": "Vollkasko" / "Teilkasko" / null, "quelle": "...", "sicher": true/false},
     "versicherungsschutz_praeferenz": {"wert": "Empfehlung", "quelle": "", "sicher": true}
   }
 }
 
 WICHTIGE REGELN:
+- "Deckungsumfang" / "gewuenschter Versicherungsschutz" im Dokument richtig
+  interpretieren: steht dort "Haftpflicht und Teilkasko" oder "Haftpflicht
+  und Vollkasko" (oder nur "Teilkasko"/"Vollkasko"), dann IMMER
+  kasko_zusatzdeckung = "Ja" UND kaskovariante = "Teilkasko" bzw.
+  "Vollkasko" setzen -- Teilkasko UND Vollkasko sind beides Kasko-Varianten,
+  nicht "nur Haftpflicht". Nur wenn ausschliesslich "Haftpflicht" (ohne
+  jede Kasko-Erwaehnung) angegeben ist, gilt kasko_zusatzdeckung = "Nein".
 - "quelle" ist immer das woertliche Zitat aus dem Dokument. Steht ein Wert
   nicht direkt im Dokument, schreib eine kurze Begruendung hinein.
 - "sicher" ist true NUR wenn du dir wirklich sicher bist. Bei unleserlichen,

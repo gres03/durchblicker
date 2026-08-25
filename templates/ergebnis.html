@@ -24,7 +24,7 @@
       <tbody>
         {% for z in zeilen %}
         <tr>
-          <td>{{ z.pfad }}</td>
+          <td>{{ z.label }}</td>
           <td>{{ z.soll }}</td>
           <td>{{ z.ist }}</td>
           <td><span class="abzeichen {{ 'ok' if z.ok else 'klaeren' }}">{{ 'OK' if z.ok else 'FEHLER' }}</span></td>

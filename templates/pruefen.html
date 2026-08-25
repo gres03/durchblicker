@@ -22,7 +22,7 @@
       <tbody>
         {% for z in zeilen %}
         <tr class="{{ 'unklar' if z.unklar else '' }}">
-          <td>{{ z.pfad }}</td>
+          <td>{{ z.label }}</td>
           <td>
             {% if z.unklar %}
               {% if z.enum %}

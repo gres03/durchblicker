@@ -19,6 +19,7 @@ from pathlib import Path
 
 from colorama import Fore, Style, init as colorama_init
 
+from feldbezeichnungen import label
 from validate import alle_felder, lade_schema, validiere
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -96,7 +97,7 @@ def sammle_gruende(bericht):
 
 def drucke_tabelle(fall, gruende):
     zeilen = sorted(alle_felder(fall), key=lambda kv: kv[0])
-    breite_pfad = max(len(p) for p, _ in zeilen) + 1
+    breite_pfad = max(len(label(p)) for p, _ in zeilen) + 1
     print(f"\n{'Feld'.ljust(breite_pfad)}  {'Wert'.ljust(28)}  {'Zitat'.ljust(40)}  Status")
     print("-" * (breite_pfad + 28 + 40 + 20))
     for pfad, feld in zeilen:
@@ -106,7 +107,7 @@ def drucke_tabelle(fall, gruende):
             status = Fore.RED + "ZU KLAEREN" + Style.RESET_ALL
         else:
             status = Fore.GREEN + "OK" + Style.RESET_ALL
-        print(f"{pfad.ljust(breite_pfad)}  {wert.ljust(28)}  {quelle.ljust(40)}  {status}")
+        print(f"{label(pfad).ljust(breite_pfad)}  {wert.ljust(28)}  {quelle.ljust(40)}  {status}")
     print()
 
 
@@ -126,7 +127,7 @@ def frage_neuen_wert(pfad, wert_schema, aktueller_wert, quelle):
         typen = [typen]
     ist_datum = wert_schema.get("format") == "date"
 
-    print(f"\n--- {pfad} ---")
+    print(f"\n--- {label(pfad)} ---")
     print(f"  aktueller Wert : {aktueller_wert!r}")
     print(f"  Zitat          : {quelle!r}")
     if enum:
@@ -190,7 +191,7 @@ def klaere_interaktiv(fall, schema, gruende):
     for pfad, feld in sorted(alle_felder(fall)):
         if pfad not in gruende:
             continue
-        print(Fore.RED + f"\n>>> Klaerung noetig: {pfad}" + Style.RESET_ALL)
+        print(Fore.RED + f"\n>>> Klaerung noetig: {label(pfad)}" + Style.RESET_ALL)
         for grund in gruende[pfad]:
             print(f"    - {grund}")
 

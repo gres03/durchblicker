@@ -20,6 +20,7 @@ from flask import Flask, redirect, render_template, request, url_for
 
 from confirm import resolve_wert_schema, sammle_gruende
 from extract import ExtraktionsFehler, extrahiere
+from feldbezeichnungen import label
 from fill import fuelle_fuer_webapp
 from mapping import map_fall
 from validate import alle_felder, lade_schema, validiere
@@ -149,24 +150,19 @@ def interner_fehler(_e):
     return render_template("upload.html", fehler="Unerwarteter Fehler. Bitte nochmal versuchen; falls es wiederholt auftritt, das schwarze Fenster im Hintergrund pruefen."), 500
 
 
-@app.route("/pruefen")
-def pruefen():
-    if not FALL_PFAD.exists():
-        return redirect(url_for("start"))
-
-    fall = lade_fall()
-    schema = lade_schema()
-    bericht = validiere(fall)
+def _baue_pruefen_zeilen(fall, schema, bericht, formular_fehler=None):
+    formular_fehler = formular_fehler or {}
     gruende = sammle_gruende(bericht)
-
     zeilen = []
     for pfad, feld in sorted(alle_felder(fall)):
         eintrag = {
             "pfad": pfad,
+            "label": label(pfad),
             "wert": feld.get("wert"),
             "quelle": feld.get("quelle") or "",
             "unklar": pfad in gruende,
             "gruende": gruende.get(pfad, []),
+            "formularfehler": formular_fehler.get(pfad),
         }
         if eintrag["unklar"]:
             wert_schema = resolve_wert_schema(schema, pfad)
@@ -176,6 +172,18 @@ def pruefen():
                 wert_schema.get("type") if isinstance(wert_schema.get("type"), list) else [wert_schema.get("type")]
             )
         zeilen.append(eintrag)
+    return zeilen
+
+
+@app.route("/pruefen")
+def pruefen():
+    if not FALL_PFAD.exists():
+        return redirect(url_for("start"))
+
+    fall = lade_fall()
+    schema = lade_schema()
+    bericht = validiere(fall)
+    zeilen = _baue_pruefen_zeilen(fall, schema, bericht)
 
     return render_template("pruefen.html", zeilen=zeilen, alles_ok=bericht["ok"])
 
@@ -200,19 +208,7 @@ def bestaetigen():
 
     if fehler:
         bericht = validiere(fall)
-        gruende = sammle_gruende(bericht)
-        zeilen = []
-        for pfad, feld in sorted(alle_felder(fall)):
-            eintrag = {
-                "pfad": pfad, "wert": feld.get("wert"), "quelle": feld.get("quelle") or "",
-                "unklar": pfad in gruende, "gruende": gruende.get(pfad, []),
-                "formularfehler": fehler.get(pfad),
-            }
-            if eintrag["unklar"]:
-                wert_schema = resolve_wert_schema(schema, pfad)
-                eintrag["enum"] = [w for w in wert_schema.get("enum", []) if w is not None]
-                eintrag["ist_datum"] = wert_schema.get("format") == "date"
-            zeilen.append(eintrag)
+        zeilen = _baue_pruefen_zeilen(fall, schema, bericht, formular_fehler=fehler)
         return render_template("pruefen.html", zeilen=zeilen, alles_ok=False)
 
     bericht = validiere(fall)
@@ -220,6 +216,8 @@ def bestaetigen():
         return redirect(url_for("pruefen"))
 
     zeilen, fehlermeldung = fuelle_fuer_webapp(FALL_PFAD)
+    for z in zeilen:
+        z["label"] = label(z["pfad"])
     return render_template("ergebnis.html", zeilen=zeilen, fehlermeldung=fehlermeldung)
 
 

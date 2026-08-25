@@ -24,6 +24,7 @@ from pathlib import Path
 from colorama import Fore, Style, init as colorama_init
 from playwright.sync_api import sync_playwright
 
+from feldbezeichnungen import label
 from portals.durchblicker import DurchblickerPortal
 from validate import validiere
 
@@ -33,14 +34,14 @@ LOGS_DIR = BASE_DIR / "logs"
 
 
 def drucke_verifikationstabelle(zeilen):
-    breite_pfad = max(len(z["pfad"]) for z in zeilen) + 1
+    breite_pfad = max(len(label(z["pfad"])) for z in zeilen) + 1
     print(f"\n{'Feld'.ljust(breite_pfad)}  {'Soll'.ljust(28)}  {'Ist'.ljust(28)}  Status")
     print("-" * (breite_pfad + 28 + 28 + 20))
     for z in zeilen:
         soll = str(z["soll"])[:28]
         ist = str(z["ist"])[:28]
         status = (Fore.GREEN + "OK" + Style.RESET_ALL) if z["ok"] else (Fore.RED + "FEHLER" + Style.RESET_ALL)
-        print(f"{z['pfad'].ljust(breite_pfad)}  {soll.ljust(28)}  {ist.ljust(28)}  {status}")
+        print(f"{label(z['pfad']).ljust(breite_pfad)}  {soll.ljust(28)}  {ist.ljust(28)}  {status}")
     print()
 
 

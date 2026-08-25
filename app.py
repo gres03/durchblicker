@@ -215,7 +215,10 @@ def bestaetigen():
     if not bericht["ok"]:
         return redirect(url_for("pruefen"))
 
-    zeilen, fehlermeldung = fuelle_fuer_webapp(FALL_PFAD)
+    try:
+        zeilen, fehlermeldung = fuelle_fuer_webapp(FALL_PFAD)
+    except ValueError as e:
+        return render_template("ergebnis.html", zeilen=[], fehlermeldung=str(e))
     for z in zeilen:
         z["label"] = label(z["pfad"])
     return render_template("ergebnis.html", zeilen=zeilen, fehlermeldung=fehlermeldung)

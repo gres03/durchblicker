@@ -130,6 +130,10 @@
             { "properties": { "wert": { "type": ["string", "null"], "enum": ["Privatperson", "Einzelunternehmen", null] } } }
           ]
         },
+        "firmenbucheintrag": {
+          "$ref": "#/$defs/feldBoolean",
+          "description": "'Ist Ihr Einzelunternehmen im Firmenbuch eingetragen?'. Nur relevant wenn anmeldung_als='Einzelunternehmen' -- live entdeckt 2026-08-25."
+        },
         "geburtsdatum": { "$ref": "#/$defs/feldDatum" },
         "nationalitaet": {
           "$ref": "#/$defs/feldString",

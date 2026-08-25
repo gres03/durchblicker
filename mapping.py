@@ -48,10 +48,13 @@ ENUM_FELDER = set(ERLAUBTE_WERTE.keys())
 # Versicherer/Nationalitaeten faelschlich als "sicher" durchgehen).
 FREITEXT_FELDER_MIT_SYNONYMEN = {"bestehende_versicherung", "nationalitaet"}
 
-BOOLEAN_FELDER = {"zugelassen", "erstbesitzer", "zweitwagen", "kasko_zusatzdeckung"}
+BOOLEAN_FELDER = {"zugelassen", "erstbesitzer", "zweitwagen", "kasko_zusatzdeckung", "firmenbucheintrag"}
 
 FAHRZEUG_FELDER = {"finanzierung", "zugelassen", "erstbesitzer"}
-VERSICHERUNGSNEHMER_FELDER = {"bonus_malus_stufe", "bestehende_versicherung", "nationalitaet", "zweitwagen", "anmeldung_als"}
+VERSICHERUNGSNEHMER_FELDER = {
+    "bonus_malus_stufe", "bestehende_versicherung", "nationalitaet", "zweitwagen",
+    "anmeldung_als", "firmenbucheintrag",
+}
 PRODUKT_FELDER = {"versicherungsschutz_praeferenz", "kasko_zusatzdeckung", "kaskovariante"}
 
 
@@ -265,6 +268,15 @@ def map_fall(rohdaten):
     versicherungsnehmer = _mappe_abschnitt(
         rohdaten.get("versicherungsnehmer", {}), VERSICHERUNGSNEHMER_FELDER, synonyme
     )
+    if versicherungsnehmer.get("anmeldung_als", {}).get("wert") != "Einzelunternehmen":
+        # firmenbucheintrag erscheint am Formular nur, wenn als
+        # Einzelunternehmen angemeldet wird -- sonst ist ein offener Wert
+        # nicht anwendbar statt klaerungsbeduerftig.
+        versicherungsnehmer["firmenbucheintrag"] = {
+            "wert": None,
+            "quelle": "nicht relevant, da Anmeldung als Privatperson",
+            "sicher": True,
+        }
 
     produkt = _mappe_abschnitt(rohdaten.get("produkt", {}), PRODUKT_FELDER, synonyme)
 

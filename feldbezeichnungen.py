@@ -24,6 +24,7 @@ FELD_LABELS = {
     "versicherungsnehmer.nationalitaet": "Nationalität",
     "versicherungsnehmer.zweitwagen": "Zweitwagen im Haushalt",
     "versicherungsnehmer.anmeldung_als": "Anmeldung als",
+    "versicherungsnehmer.firmenbucheintrag": "Einzelunternehmen im Firmenbuch eingetragen",
     "versicherungsnehmer.geburtsdatum": "Geburtsdatum",
     "versicherungsnehmer.plz": "Postleitzahl",
     "versicherungsnehmer.email": "E-Mail-Adresse",

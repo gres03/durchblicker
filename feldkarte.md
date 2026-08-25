@@ -14,8 +14,8 @@ letzte Schritt vor "Zum Ergebnis" -- dieser Button wurde NICHT geklickt.
 **Nicht erkundete Nebenzweige** (siehe TODO-Liste am Ende): "Nein" bei
 zugelassen (Neuwagen-Anmeldung), "Marke und Modell" statt Zulassungscode,
 Leasing/Kredit-Finanzierung, "Günstiger Preis"/"Deckungen selbst
-festlegen" statt Empfehlung, Einzelunternehmen. (Erstbesitzer=Ja und
-Kasko-Zusatzdeckung sind seit 2026-08-25 implementiert, siehe unten.)
+festlegen" statt Empfehlung. (Erstbesitzer=Ja, Kasko-Zusatzdeckung und
+Einzelunternehmen sind seit 2026-08-25 implementiert, siehe unten.)
 
 **Update Phase 4 (fill.py, live end-to-end getestet, siehe portals/durchblicker.py):**
 - Tippen-zum-Filtern in durchsuchbaren Comboboxen (Baujahr, Bestehende
@@ -149,6 +149,7 @@ Ergebnis" statt "Weiter" — wurde NICHT geklickt).
 | Feld | Locator | Typ | Pflicht | Werte / Format | Abhängigkeiten |
 |---|---|---|---|---|---|
 | Anmeldung als | `input[name="auto.vn.vntyp-radiogroup"]` (nth 0 = Privatperson, nth 1 = Einzelunternehmen) | Radio | ja | Privatperson (Default aktiv) / Einzelunternehmen | — |
+| Ist Ihr Einzelunternehmen im Firmenbuch eingetragen? | `input[name="auto.vn.firmenbucheintrag-radiogroup"]` (nth 0 = Ja, nth 1 = Nein) | Radio | ja, **nur wenn Anmeldung als = Einzelunternehmen** | Ja / Nein | erscheint erst nach Auswahl "Einzelunternehmen". Laut Info-Tooltip: nur Fahrzeuge "ohne besondere Verwendung" abwickelbar, sonstige Unternehmensformen (nicht Einzelunternehmen) aktuell gar nicht vergleichbar. Live erkundet und implementiert 2026-08-25. |
 | Geburtsdatum | `#auto.vn.geburtsdatum` (segmentiertes Datum, gleiche Mechanik wie Erstzulassung) | Datum | ja | TT/MM/JJJJ | — |
 | Nationalität | `#auto.vn.nation-combobox` | Combobox (durchsuchbar) | ja | Default "Österreich". Weitere Optionen nicht gedumpt (TODO) | — |
 | Postleitzahl | `#auto.vn.region.plz` (name-Attribut identisch: `auto.vn.region.plz`) | Text | ja | Placeholder "Postleitzahl" — vermutlich 4-stellig AT, Format nicht am Feld selbst erzwungen gesehen (TODO: Grenzfall testen, z.B. 3-stellig) | — |

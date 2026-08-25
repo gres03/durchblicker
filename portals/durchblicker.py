@@ -150,8 +150,6 @@ class DurchblickerPortal(KfzPortal):
                 "fahrzeug.finanzierung: nur 'Nein' implementiert (Leasing/Kredit-Folgefelder "
                 "nicht erkundet, siehe feldkarte.md TODO #5)"
             )
-        if vn["anmeldung_als"]["wert"] != "Privatperson":
-            gruende.append("versicherungsnehmer.anmeldung_als: nur 'Privatperson' implementiert")
         if vn["nationalitaet"]["wert"] != "Österreich":
             gruende.append(
                 "versicherungsnehmer.nationalitaet: nur der Formular-Default 'Österreich' "
@@ -295,10 +293,28 @@ class DurchblickerPortal(KfzPortal):
         _klick_weiter(page)
 
         # --- Schritt 5: Person / Versicherungsnehmer ---
+        anmeldung_als = vn["anmeldung_als"]["wert"]
         vntyp_radios = page.locator('input[name="auto.vn.vntyp-radiogroup"]')
-        vntyp_radios.nth(0).click(timeout=8000)  # Privatperson
-        pruefe("versicherungsnehmer.anmeldung_als", vn["anmeldung_als"]["wert"],
+        vntyp_radios.nth(0 if anmeldung_als == "Privatperson" else 1).click(timeout=8000)
+        pruefe("versicherungsnehmer.anmeldung_als", anmeldung_als,
                _lies_enum_radio(vntyp_radios, ["Privatperson", "Einzelunternehmen"]))
+
+        # 'Ist Ihr Einzelunternehmen im Firmenbuch eingetragen?' erscheint
+        # nur nach Auswahl von 'Einzelunternehmen' -- live entdeckt
+        # 2026-08-25.
+        if anmeldung_als == "Einzelunternehmen":
+            firmenbucheintrag = vn.get("firmenbucheintrag", {}).get("wert")
+            if firmenbucheintrag not in (True, False):
+                raise RuntimeError(
+                    "Das Formular verlangt fuer 'Einzelunternehmen' eine Angabe, ob das "
+                    "Unternehmen im Firmenbuch eingetragen ist, aber fall.json enthaelt "
+                    "keinen gueltigen Wert fuer versicherungsnehmer.firmenbucheintrag. "
+                    "Bitte ergaenzen (siehe feldkarte.md)."
+                )
+            firmenbuch_radios = page.locator('input[name="auto.vn.firmenbucheintrag-radiogroup"]')
+            firmenbuch_radios.nth(0 if firmenbucheintrag else 1).click(timeout=8000)
+            pruefe("versicherungsnehmer.firmenbucheintrag", firmenbucheintrag,
+                   _lies_ja_nein(firmenbuch_radios))
 
         _fuelle_segmentiertes_datum(page, "#auto\\.vn\\.geburtsdatum", vn["geburtsdatum"]["wert"])
         pruefe("versicherungsnehmer.geburtsdatum", vn["geburtsdatum"]["wert"],

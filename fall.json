@@ -82,6 +82,11 @@
       "quelle": "",
       "sicher": true
     },
+    "firmenbucheintrag": {
+      "wert": null,
+      "quelle": "nicht relevant, da Anmeldung als Privatperson",
+      "sicher": true
+    },
     "geburtsdatum": {
       "wert": "1990-05-14",
       "quelle": "geb. 14.05.1990",

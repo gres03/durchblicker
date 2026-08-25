@@ -23,6 +23,7 @@ weiteren Text davor oder danach, exakt in dieser Struktur:
     "nationalitaet": {"wert": "<Staatsangehoerigkeit, meist 'Österreich'>", "quelle": "...", "sicher": true/false},
     "zweitwagen": {"wert": "Ja" oder "Nein" (gibt es im Haushalt bereits ein weiteres versichertes Auto?), "quelle": "...", "sicher": true/false},
     "anmeldung_als": {"wert": "Privat" oder "Firma", "quelle": "...", "sicher": true/false},
+    "firmenbucheintrag": {"wert": "Ja" oder "Nein" oder null (nur relevant, wenn anmeldung_als='Firma': ist das Einzelunternehmen im Firmenbuch eingetragen?), "quelle": "...", "sicher": true/false},
     "geburtsdatum": {"wert": "<Datum als JJJJ-MM-TT oder null>", "quelle": "...", "sicher": true/false},
     "plz": {"wert": "<4-stellige Postleitzahl oder null>", "quelle": "...", "sicher": true/false},
     "email": {"wert": "<E-Mail-Adresse oder null>", "quelle": "...", "sicher": true/false}

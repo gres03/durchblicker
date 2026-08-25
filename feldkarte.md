@@ -12,10 +12,32 @@ Vergleichen). Rohdaten (Screenshots, JSON-Dumps, Accessibility-Snapshots) in
 letzte Schritt vor "Zum Ergebnis" -- dieser Button wurde NICHT geklickt.
 
 **Nicht erkundete Nebenzweige** (siehe TODO-Liste am Ende): "Nein" bei
-zugelassen (Neuwagen-Anmeldung), "Marke und Modell" statt Zulassungscode,
-Leasing/Kredit-Finanzierung, "Günstiger Preis"/"Deckungen selbst
-festlegen" statt Empfehlung. (Erstbesitzer=Ja, Kasko-Zusatzdeckung und
-Einzelunternehmen sind seit 2026-08-25 implementiert, siehe unten.)
+zugelassen (Neuwagen-Anmeldung), Leasing/Kredit-Finanzierung, "Günstiger
+Preis"/"Deckungen selbst festlegen" statt Empfehlung. (Erstbesitzer=Ja,
+Kasko-Zusatzdeckung, Einzelunternehmen und "Marke und Modell" sind seit
+2026-08-25 implementiert, siehe unten.)
+
+**Update 2026-08-25 (Marke und Modell):** Kompletter Fallback-Weg fuer
+Dokumente ohne Nationalcode live erkundet und implementiert. Kaskade:
+Marke -> Modell -> Treibstoff -> Motorleistung (kW) -> Bauart -> Anzahl
+Tueren -> Ergebnisliste mit ggf. mehreren passenden Fahrzeugtypen (bis zu
+11 in einem Testlauf gesehen), aus der per Variante-Text eindeutig
+ausgewaehlt werden muss. Deutlich aufwaendiger als der Nationalcode-Weg:
+- Alle sechs Comboboxen sind durchsuchbar (`get_by_text` + Tippen).
+- Manche Felder werden vom Formular selbst schon eindeutig vorbefuellt
+  (beobachtet bei einem E-Auto mit nur einer Motorleistung) -- dann NICHT
+  anfassen, sonst geht die automatische Vorbelegung verloren.
+- Das kW-Feld hat einen unvorhersehbaren PS-Zusatz im Optionstext (z.B.
+  "85 kW / 115,5 PS") -- Praefix-Abgleich statt exaktem Textvergleich.
+- Die Ergebnisliste-Radios haben (anders als alle anderen Radiogruppen im
+  Formular) KEIN `name`-Attribut -- Auswahl ueber Zeilentext + naechster
+  Radio-Vorfahre.
+- End-to-end getestet: VW Golf, Diesel, 85 kW, Limousine/Sedan, 5 Tueren,
+  Variante "1,6 TDI Comfortline" traf unter 11 Ergebniszeilen eindeutig
+  "Golf 1,6 TDI Comfortline" -- alle 22 Felder verifiziert.
+- Siehe `portals/durchblicker.py` (`_waehle_falls_leer`,
+  `_waehle_aus_ergebnisliste`) und `fall.schema.json` (neue Felder
+  treibstoff, motorleistung_kw, bauart, tueren, variante jetzt nutzbar).
 
 **Update Phase 4 (fill.py, live end-to-end getestet, siehe portals/durchblicker.py):**
 - Tippen-zum-Filtern in durchsuchbaren Comboboxen (Baujahr, Bestehende

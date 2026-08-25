@@ -17,18 +17,38 @@
     },
     "marke": {
       "wert": null,
-      "quelle": "",
-      "sicher": false
+      "quelle": "nicht relevant, da Fahrzeug ueber Nationalcode identifiziert",
+      "sicher": true
     },
     "modell": {
       "wert": null,
-      "quelle": "",
-      "sicher": false
+      "quelle": "nicht relevant, da Fahrzeug ueber Nationalcode identifiziert",
+      "sicher": true
+    },
+    "treibstoff": {
+      "wert": null,
+      "quelle": "nicht relevant, da Fahrzeug ueber Nationalcode identifiziert",
+      "sicher": true
+    },
+    "motorleistung_kw": {
+      "wert": null,
+      "quelle": "nicht relevant, da Fahrzeug ueber Nationalcode identifiziert",
+      "sicher": true
+    },
+    "bauart": {
+      "wert": null,
+      "quelle": "nicht relevant, da Fahrzeug ueber Nationalcode identifiziert",
+      "sicher": true
+    },
+    "tueren": {
+      "wert": null,
+      "quelle": "nicht relevant, da Fahrzeug ueber Nationalcode identifiziert",
+      "sicher": true
     },
     "variante": {
       "wert": null,
-      "quelle": "",
-      "sicher": false
+      "quelle": "nicht relevant, da Fahrzeug ueber Nationalcode identifiziert",
+      "sicher": true
     },
     "sonderausstattung_wert": {
       "wert": null,

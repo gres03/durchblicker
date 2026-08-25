@@ -115,11 +115,13 @@ Debuggen):
 `validate.py fall.json` kann auch einzeln als reiner Pruefbericht (JSON,
 kein Terminal-UI) aufgerufen werden.
 
-**Aktuell unterstuetzter Wizard-Pfad:** siehe `feldkarte.md`. Fall.json-
-Kombinationen ausserhalb des live erkundeten Hauptpfads (z.B. "Marke und
-Modell" statt Nationalcode, Neuanmeldung, Leasing/Kredit, Einzelunternehmen)
-lehnt `fill.py` mit Klartext-Grund ab, statt zu raten
-(`DurchblickerPortal.unterstuetzter_pfad`).
+**Aktuell unterstuetzter Wizard-Pfad:** siehe `feldkarte.md`. Fahrzeug-
+Identifikation ueber Nationalcode ODER ueber "Marke und Modell" (inkl.
+Treibstoff/Motorleistung/Bauart/Tueren-Kaskade und Ergebnislisten-
+Auswahl bei mehrdeutigen Varianten) sind beide implementiert. Fall.json-
+Kombinationen ausserhalb des live erkundeten Pfads (z.B. Neuanmeldung
+eines Neuwagens, Leasing/Kredit) lehnt `fill.py` mit Klartext-Grund ab,
+statt zu raten (`DurchblickerPortal.unterstuetzter_pfad`).
 
 ## Struktur
 

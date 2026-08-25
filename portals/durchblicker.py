@@ -110,6 +110,105 @@ def _klick_weiter(page):
     page.wait_for_load_state("networkidle")
 
 
+def _waehle_falls_leer(page, selector, gewuenschter_wert, feldname_lesbar, praefix_ok=False):
+    """Fuer die kaskadierenden Comboboxen im 'Marke und Modell'-Zweig
+    (Treibstoff/Motorleistung/Bauart/Tueren): manche Felder sind nach den
+    vorherigen Auswahlen schon eindeutig automatisch vorbefuellt -- dann
+    NICHT anfassen (live beobachtet 2026-08-25, z.B. bei einem E-Auto mit
+    nur einer Motorleistung). Ist das Feld leer, muss ausgewaehlt werden;
+    ohne passenden fall.json-Wert wird klar abgebrochen statt zu raten.
+    praefix_ok=True fuer Felder mit unvorhersehbarem Optionstext-Zusatz
+    (z.B. kW-Feld: '85 kW / 115,5 PS')."""
+    aktuell = page.input_value(selector)
+    if aktuell:
+        return aktuell
+    if gewuenschter_wert is None:
+        raise RuntimeError(
+            f"Das Formular verlangt eine Auswahl fuer '{feldname_lesbar}', aber fall.json "
+            f"enthaelt keinen Wert dafuer. Bitte ergaenzen (siehe feldkarte.md)."
+        )
+    gewuenschter_text = str(gewuenschter_wert).replace(".", ",")
+    page.click(selector, timeout=10000)
+    page.keyboard.type(gewuenschter_text)
+    page.wait_for_timeout(500)
+    listbox = None
+    for lb in page.query_selector_all("[role=listbox]"):
+        if lb.is_visible():
+            listbox = lb
+            break
+    treffer = None
+    if listbox:
+        for opt in listbox.query_selector_all("[role=option]"):
+            text = (opt.inner_text() or "").strip()
+            norm = text.replace(".", ",")
+            if norm == gewuenschter_text or (praefix_ok and norm.startswith(gewuenschter_text)):
+                treffer = opt
+                break
+    if treffer is None:
+        page.keyboard.press("Escape")
+        raise RuntimeError(
+            f"Kein Treffer fuer '{feldname_lesbar}' = '{gewuenschter_wert}' unter den "
+            f"verfuegbaren Optionen gefunden."
+        )
+    treffer.click(timeout=8000)
+    page.wait_for_timeout(500)
+    return page.input_value(selector)
+
+
+def _ergebnisliste_zeilen(page):
+    """Liefert (radio, Zeilentext) fuer jede sichtbare Zeile der Fahrzeug-
+    Ergebnisliste im 'Marke und Modell'-Zweig -- diese Radios haben (anders
+    als alle benannten Radiogruppen im Formular) kein name-Attribut."""
+    ergebnis = []
+    for r in page.query_selector_all("input[type=radio]"):
+        try:
+            if not r.is_visible() or r.get_attribute("name"):
+                continue
+        except Exception:
+            continue
+        text = r.evaluate(
+            "e => { let n = e.closest('div'); let i = 0; "
+            "while (n && n.innerText.trim().length < 5 && i < 6) { n = n.parentElement; i++; } "
+            "return n ? n.innerText.trim() : ''; }"
+        )
+        ergebnis.append((r, text))
+    return ergebnis
+
+
+def _waehle_aus_ergebnisliste(page, variante_wert):
+    """Nach Marke/Modell/Treibstoff/kW/Bauart/Tueren zeigt das Formular
+    eine Liste passender Fahrzeugtypen (z.B. 'Golf 1,6 TDI Comfortline').
+    Bleibt genau eine Zeile uebrig, wird sie direkt gewaehlt. Bei mehreren
+    Zeilen muss 'variante' zu GENAU EINER passen (Teilstring-Abgleich,
+    Dezimaltrennzeichen , und . gleich behandelt) -- sonst klarer Abbruch
+    statt Raten. Live verifiziert 2026-08-25."""
+    zeilen = _ergebnisliste_zeilen(page)
+    if not zeilen:
+        raise RuntimeError(
+            "Keine Fahrzeug-Ergebniszeilen gefunden -- die Kombination aus Marke/Modell/"
+            "Treibstoff/Motorleistung/Bauart/Tueren ergab keinen Treffer."
+        )
+    if len(zeilen) == 1:
+        zeilen[0][0].click(timeout=8000)
+        return zeilen[0][1]
+    if not variante_wert:
+        namen = [t.splitlines()[0] for _, t in zeilen]
+        raise RuntimeError(
+            f"{len(zeilen)} passende Fahrzeuge gefunden, aber fall.json enthaelt keine "
+            f"'variante' zur eindeutigen Auswahl. Gefundene Typen: {namen}"
+        )
+    norm_ziel = variante_wert.strip().lower().replace(".", ",")
+    treffer = [(r, t) for r, t in zeilen if norm_ziel in t.strip().lower().replace(".", ",")]
+    if len(treffer) != 1:
+        namen = [t.splitlines()[0] for _, t in zeilen]
+        raise RuntimeError(
+            f"variante='{variante_wert}' passt nicht eindeutig zu genau einem der "
+            f"{len(zeilen)} gefundenen Fahrzeuge: {namen}"
+        )
+    treffer[0][0].click(timeout=8000)
+    return treffer[0][1]
+
+
 class DurchblickerPortal(KfzPortal):
     def login(self, page, email, password):
         page.goto(LOGIN_URL, wait_until="networkidle")
@@ -135,10 +234,10 @@ class DurchblickerPortal(KfzPortal):
         gruende = []
         fz, vn, pr = fall["fahrzeug"], fall["versicherungsnehmer"], fall["produkt"]
 
-        if fz["identifikationsmethode"]["wert"] != "nationalcode":
+        if fz["identifikationsmethode"]["wert"] not in ("nationalcode", "marke_modell"):
             gruende.append(
-                "fahrzeug.identifikationsmethode: nur 'nationalcode' ist implementiert "
-                "(Zweig 'Marke und Modell' nicht erkundet, siehe feldkarte.md TODO #2)"
+                "fahrzeug.identifikationsmethode: kein gueltiger Wert -- weder Nationalcode "
+                "noch Marke+Modell konnten aus dem Dokument bestimmt werden."
             )
         if fz["zugelassen"]["wert"] is not True:
             gruende.append(
@@ -177,27 +276,87 @@ class DurchblickerPortal(KfzPortal):
         def pruefe(pfad, soll, ist):
             zeilen.append({"pfad": pfad, "soll": soll, "ist": ist, "ok": soll == ist})
 
+        def pruefe_kaskade(pfad, soll, ist, praefix_ok=False):
+            """Wie pruefe(), aber fuer die 'Marke und Modell'-Kaskade: war
+            in fall.json kein Wert vorgegeben (Feld hat sich selbst
+            eindeutig aufgeloest), gibt es keinen echten Soll/Ist-Vergleich
+            -- dann wird der tatsaechliche Wert transparent als
+            '(automatisch)' vermerkt statt einen Fehlalarm auszuloesen."""
+            if soll is None:
+                zeilen.append({"pfad": pfad, "soll": f"(automatisch) {ist}", "ist": ist, "ok": True})
+                return
+            soll_norm = str(soll).strip().replace(".", ",")
+            ist_norm = (ist or "").strip().replace(".", ",")
+            ok = ist_norm.startswith(soll_norm) if praefix_ok else ist_norm == soll_norm
+            zeilen.append({"pfad": pfad, "soll": soll, "ist": ist, "ok": ok})
+
         # --- Schritt 1: Fahrzeug waehlen ---
         _waehle_durchsuchbar(page, "#auto\\.fahrzeug\\.baujahr-combobox", str(fz["baujahr"]["wert"]))
         pruefe("fahrzeug.baujahr", str(fz["baujahr"]["wert"]), page.input_value("#auto\\.fahrzeug\\.baujahr-combobox"))
 
-        page.get_by_text("Nationaler Zulassungscode", exact=False).click(timeout=10000)
-        page.fill("#auto\\.fahrzeug\\.etxauswahl", fz["nationalcode"]["wert"])
-        page.get_by_text("Gewähltes Fahrzeug:", exact=False).wait_for(timeout=15000)
-        pruefe("fahrzeug.nationalcode (Fahrzeug erkannt)", True,
-               page.get_by_text("Gewähltes Fahrzeug:", exact=False).count() > 0)
+        if fz["identifikationsmethode"]["wert"] == "nationalcode":
+            page.get_by_text("Nationaler Zulassungscode", exact=False).click(timeout=10000)
+            page.fill("#auto\\.fahrzeug\\.etxauswahl", fz["nationalcode"]["wert"])
+            page.get_by_text("Gewähltes Fahrzeug:", exact=False).wait_for(timeout=15000)
+            pruefe("fahrzeug.nationalcode (Fahrzeug erkannt)", True,
+                   page.get_by_text("Gewähltes Fahrzeug:", exact=False).count() > 0)
 
-        sonderausstattung = fz.get("sonderausstattung_wert", {}).get("wert")
-        if sonderausstattung is not None:
-            page.get_by_text("Exakt eingeben", exact=True).click(timeout=5000)
-            page.fill("#auto\\.fahrzeug\\.sonderausstattungexakt", _format_betrag(sonderausstattung))
-            page.keyboard.press("Tab")
-            ist_text = page.input_value("#auto\\.fahrzeug\\.sonderausstattungexakt")
-            try:
-                ist_wert = float(ist_text)
-            except ValueError:
-                ist_wert = None
-            pruefe("fahrzeug.sonderausstattung_wert", float(sonderausstattung), ist_wert)
+            sonderausstattung = fz.get("sonderausstattung_wert", {}).get("wert")
+            if sonderausstattung is not None:
+                page.get_by_text("Exakt eingeben", exact=True).click(timeout=5000)
+                page.fill("#auto\\.fahrzeug\\.sonderausstattungexakt", _format_betrag(sonderausstattung))
+                page.keyboard.press("Tab")
+                ist_text = page.input_value("#auto\\.fahrzeug\\.sonderausstattungexakt")
+                try:
+                    ist_wert = float(ist_text)
+                except ValueError:
+                    ist_wert = None
+                pruefe("fahrzeug.sonderausstattung_wert", float(sonderausstattung), ist_wert)
+        else:
+            # 'Marke und Modell' -- Fallback ohne lesbaren Nationalcode.
+            # Kaskadierende Comboboxen, live erkundet und implementiert
+            # 2026-08-25: Marke -> Modell -> Treibstoff -> Motorleistung ->
+            # Bauart -> Anzahl Tueren -> Ergebnisliste mit ggf. mehreren
+            # passenden Fahrzeugtypen.
+            page.get_by_text("Marke und Modell", exact=False).click(timeout=10000)
+
+            _waehle_durchsuchbar(page, "#auto\\.fahrzeug\\.marke-combobox", fz["marke"]["wert"])
+            pruefe("fahrzeug.marke", fz["marke"]["wert"], page.input_value("#auto\\.fahrzeug\\.marke-combobox"))
+
+            _waehle_durchsuchbar(page, "#auto\\.fahrzeug\\.modell-combobox", fz["modell"]["wert"])
+            pruefe("fahrzeug.modell", fz["modell"]["wert"], page.input_value("#auto\\.fahrzeug\\.modell-combobox"))
+
+            treibstoff_soll = fz.get("treibstoff", {}).get("wert")
+            treibstoff_ist = _waehle_falls_leer(
+                page, "#auto\\.fahrzeug\\.treibstoff-combobox", treibstoff_soll, "Treibstoff"
+            )
+            pruefe_kaskade("fahrzeug.treibstoff", treibstoff_soll, treibstoff_ist)
+
+            kw_soll = fz.get("motorleistung_kw", {}).get("wert")
+            kw_ist = _waehle_falls_leer(
+                page, "#auto\\.fahrzeug\\.kw-combobox", kw_soll, "Motorleistung (kW)", praefix_ok=True
+            )
+            pruefe_kaskade("fahrzeug.motorleistung_kw", kw_soll, kw_ist, praefix_ok=True)
+
+            bauart_soll = fz.get("bauart", {}).get("wert")
+            bauart_ist = _waehle_falls_leer(page, "#auto\\.fahrzeug\\.bauart-combobox", bauart_soll, "Bauart")
+            pruefe_kaskade("fahrzeug.bauart", bauart_soll, bauart_ist)
+
+            tueren_sel = "#auto\\.fahrzeug\\.tueren-combobox"
+            if page.query_selector(tueren_sel):
+                tueren_soll = fz.get("tueren", {}).get("wert")
+                tueren_ist = _waehle_falls_leer(page, tueren_sel, tueren_soll, "Anzahl Türen")
+                pruefe_kaskade("fahrzeug.tueren", tueren_soll, tueren_ist)
+
+            variante_soll = fz.get("variante", {}).get("wert")
+            zeile_text = _waehle_aus_ergebnisliste(page, variante_soll)
+            erste_zeile = zeile_text.splitlines()[0] if zeile_text else "?"
+            zeilen.append({
+                "pfad": "fahrzeug.variante (Fahrzeug ausgewählt)",
+                "soll": variante_soll or f"(automatisch) {erste_zeile}",
+                "ist": erste_zeile,
+                "ok": True,
+            })
 
         _klick_weiter(page)
 

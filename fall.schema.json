@@ -68,9 +68,34 @@
           "$ref": "#/$defs/feldString",
           "description": "Feld A7 im Zulassungsschein. Pflicht, wenn identifikationsmethode=nationalcode."
         },
-        "marke": { "$ref": "#/$defs/feldString", "description": "Nur relevant wenn identifikationsmethode=marke_modell. Auswahl-Mechanik noch nicht erkundet (TODO in feldkarte.md) -- Feld existiert hier als Platzhalter." },
-        "modell": { "$ref": "#/$defs/feldString", "description": "Siehe marke." },
-        "variante": { "$ref": "#/$defs/feldString", "description": "Siehe marke." },
+        "marke": { "$ref": "#/$defs/feldString", "description": "Nur relevant wenn identifikationsmethode=marke_modell. Exakter Markenname wie im Formular (durchsuchbare Combobox, live verifiziert 2026-08-25)." },
+        "modell": { "$ref": "#/$defs/feldString", "description": "Siehe marke. Exaktes Modell, erscheint als Combobox erst nach Auswahl der Marke." },
+        "treibstoff": {
+          "$ref": "#/$defs/feldString",
+          "description": "Nur relevant wenn identifikationsmethode=marke_modell. Verifizierte Beispielwerte fuer Golf: 'Strom', 'Benzin', 'Diesel' -- Liste variiert vermutlich je Modell, kein festes Enum. Manchmal vom Formular schon eindeutig vorbelegt (dann nicht anfassen)."
+        },
+        "motorleistung_kw": {
+          "allOf": [
+            { "$ref": "#/$defs/extrahiertesFeld" },
+            { "properties": { "wert": { "type": ["number", "null"], "minimum": 0 } } }
+          ],
+          "description": "Nur relevant wenn identifikationsmethode=marke_modell. Reine kW-Zahl (z.B. 85) -- der PS-Zusatz im Optionstext ('85 kW / 115,5 PS') ist nicht vorhersehbar, daher Praefix-Abgleich beim Ausfuellen. Manchmal vom Formular schon eindeutig vorbelegt."
+        },
+        "bauart": {
+          "$ref": "#/$defs/feldString",
+          "description": "Nur relevant wenn identifikationsmethode=marke_modell. Verifizierte Beispielwerte: 'Limousine/Sedan', 'Kombi - PKW'. Manchmal vom Formular schon eindeutig vorbelegt."
+        },
+        "tueren": {
+          "allOf": [
+            { "$ref": "#/$defs/extrahiertesFeld" },
+            { "properties": { "wert": { "type": ["integer", "null"], "minimum": 2, "maximum": 6 } } }
+          ],
+          "description": "Nur relevant wenn identifikationsmethode=marke_modell. Anzahl Tueren. Manchmal vom Formular schon eindeutig vorbelegt (Feld erscheint dann evtl. gar nicht erst)."
+        },
+        "variante": {
+          "$ref": "#/$defs/feldString",
+          "description": "Nur relevant wenn identifikationsmethode=marke_modell. Nach Marke/Modell/Treibstoff/kW/Bauart/Tueren zeigt das Formular eine Ergebnisliste mehrerer Typen (z.B. 'Golf 1,6 TDI Comfortline', 'Golf 2,0 TDI Life') -- variante muss zu GENAU EINER Zeile passen (Teilstring-Abgleich, Dezimaltrennzeichen , und . werden gleich behandelt). Bleibt nach den anderen Filtern nur 1 Zeile uebrig, wird variante nicht gebraucht."
+        },
         "sonderausstattung_wert": {
           "allOf": [
             { "$ref": "#/$defs/extrahiertesFeld" },

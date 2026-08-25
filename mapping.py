@@ -153,6 +153,28 @@ def bestimme_identifikationsmethode(fahrzeug_rohdaten):
     return {"wert": None, "quelle": "", "sicher": False}
 
 
+# Nur eines der beiden Identifikations-Feldsets ist pro Fall jemals
+# relevant (siehe bestimme_identifikationsmethode) -- das jeweils andere
+# ist bewusst kein Klaerungsbedarf, auch wenn es leer/unsicher ist.
+NATIONALCODE_FELDER = {"nationalcode"}
+MARKE_MODELL_FELDER = {"marke", "modell", "treibstoff", "motorleistung_kw", "bauart", "tueren", "variante"}
+
+
+def _bereinige_identifikationsfelder(fahrzeug):
+    methode = fahrzeug.get("identifikationsmethode", {}).get("wert")
+    if methode == "nationalcode":
+        irrelevant, grund = MARKE_MODELL_FELDER, "nicht relevant, da Fahrzeug ueber Nationalcode identifiziert"
+    elif methode == "marke_modell":
+        irrelevant, grund = NATIONALCODE_FELDER, "nicht relevant, da Fahrzeug ueber Marke/Modell identifiziert"
+    else:
+        return  # Identifikationsmethode selbst noch unklar -- nichts bereinigen
+
+    for feldname in irrelevant:
+        feld = fahrzeug.get(feldname, {})
+        if feld.get("sicher") is False and feld.get("wert") in (None, ""):
+            fahrzeug[feldname] = {"wert": None, "quelle": grund, "sicher": True}
+
+
 # Felder, bei denen eine fehlende Angabe im Dokument NICHT zur Klaerung
 # vorgelegt werden muss, weil entweder (a) der durchblicker.at-Rechner
 # selbst schon einen Standardwert vorbelegt (Bonus/Malus-Stufe,
@@ -262,6 +284,7 @@ def map_fall(rohdaten):
 
     fahrzeug = _mappe_abschnitt(rohdaten.get("fahrzeug", {}), FAHRZEUG_FELDER, synonyme)
     fahrzeug["identifikationsmethode"] = bestimme_identifikationsmethode(rohdaten.get("fahrzeug", {}))
+    _bereinige_identifikationsfelder(fahrzeug)
     _leite_erstbesitzer_ab(fahrzeug)
     _bereinige_erstzulassung_auf_sie(fahrzeug)
 

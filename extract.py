@@ -36,7 +36,11 @@ dieser Struktur:
     "nationalcode": {"wert": "<Feld A7 'Nationaler Code' aus dem Zulassungsschein, sonst null>", "quelle": "...", "sicher": true/false},
     "marke": {"wert": "<Automarke oder null, nur falls kein Nationalcode vorhanden>", "quelle": "...", "sicher": true/false},
     "modell": {"wert": "<Modell oder null, nur falls kein Nationalcode vorhanden>", "quelle": "...", "sicher": true/false},
-    "variante": {"wert": null, "quelle": "", "sicher": true},
+    "treibstoff": {"wert": "<z.B. 'Benzin', 'Diesel', 'Strom', oder null -- nur relevant wenn kein Nationalcode vorhanden>", "quelle": "...", "sicher": true/false},
+    "motorleistung_kw": {"wert": <Motorleistung in kW als Zahl oder null -- nur relevant wenn kein Nationalcode vorhanden>, "quelle": "...", "sicher": true/false},
+    "bauart": {"wert": "<z.B. 'Limousine/Sedan', 'Kombi - PKW', oder null -- nur relevant wenn kein Nationalcode vorhanden>", "quelle": "...", "sicher": true/false},
+    "tueren": {"wert": <Anzahl Tueren als Zahl oder null -- nur relevant wenn kein Nationalcode vorhanden>, "quelle": "...", "sicher": true/false},
+    "variante": {"wert": "<genaue Modellvariante/Ausstattungslinie, z.B. '1,6 TDI Comfortline', oder null -- nur relevant wenn kein Nationalcode vorhanden>", "quelle": "...", "sicher": true/false},
     "sonderausstattung_wert": {"wert": <Euro-Betrag als Zahl oder null>, "quelle": "...", "sicher": true/false},
     "zugelassen": {"wert": "Ja" oder "Nein", "quelle": "...", "sicher": true/false},
     "erstbesitzer": {"wert": "Ja" oder "Nein" (Ja = fabriksneu gekauft), "quelle": "...", "sicher": true/false},
@@ -88,6 +92,8 @@ WICHTIGE REGELN:
   bisheriger Halter: 1" sind MEHRDEUTIG (koennte "ich bin Halter Nr. 1" ODER
   "es gab 1 Halter vor mir" bedeuten) -- in diesem Fall IMMER
   "sicher": false setzen, nie interpretieren.
+- "motorleistung_kw": NUR die kW-Zahl, NICHT die PS-Zahl (Pferdestaerke) --
+  ein Dokument nennt oft beides (z.B. "85 kW / 115 PS"), hier ist 85 richtig.
 - Bevor du antwortest: geh das Dokument noch einmal komplett durch und
   vergleiche jeden extrahierten Wert mit der Originalstelle, bevor du die
   finale Antwort gibst.

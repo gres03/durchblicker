@@ -15,46 +15,40 @@
   {% endif %}
 
   <form method="post" action="{{ url_for('bestaetigen') }}">
+    {% if anzahl_unklar > 0 %}
     <table>
       <thead>
         <tr><th>Feld</th><th>Wert</th><th>Zitat aus dem Dokument</th><th>Status</th></tr>
       </thead>
       <tbody>
-        {% for z in zeilen %}
-        <tr class="{{ 'unklar' if z.unklar else '' }}">
+        {% for z in zeilen if z.unklar %}
+        <tr class="unklar">
           <td>{{ z.label }}</td>
           <td>
-            {% if z.unklar %}
-              {% if z.enum %}
-                <select name="{{ z.pfad }}">
-                  <option value="">— aktuellen Wert ({{ z.wert if z.wert is not none else 'leer' }}) behalten —</option>
-                  {% for option in z.enum %}
-                    <option value="{{ option }}">{{ option }}</option>
-                  {% endfor %}
-                </select>
-              {% elif z.ist_datum %}
-                <input type="text" name="{{ z.pfad }}" placeholder="JJJJ-MM-TT" value="">
-              {% else %}
-                <input type="text" name="{{ z.pfad }}" placeholder="{{ z.wert if z.wert is not none else '' }}" value="">
-              {% endif %}
-              {% if z.formularfehler %}<div class="grund">{{ z.formularfehler }}</div>{% endif %}
+            {% if z.enum %}
+              <select name="{{ z.pfad }}">
+                <option value="">— aktuellen Wert ({{ z.wert if z.wert is not none else 'leer' }}) behalten —</option>
+                {% for option in z.enum %}
+                  <option value="{{ option }}">{{ option }}</option>
+                {% endfor %}
+              </select>
+            {% elif z.ist_datum %}
+              <input type="text" name="{{ z.pfad }}" placeholder="JJJJ-MM-TT" value="">
             {% else %}
-              {{ z.wert if z.wert is not none else "—" }}
+              <input type="text" name="{{ z.pfad }}" placeholder="{{ z.wert if z.wert is not none else '' }}" value="">
             {% endif %}
+            {% if z.formularfehler %}<div class="grund">{{ z.formularfehler }}</div>{% endif %}
           </td>
           <td class="zitat">{{ z.quelle }}</td>
           <td>
-            {% if z.unklar %}
-              <span class="abzeichen klaeren">Klären</span>
-              {% for grund in z.gruende %}<div class="grund">{{ grund }}</div>{% endfor %}
-            {% else %}
-              <span class="abzeichen ok">OK</span>
-            {% endif %}
+            <span class="abzeichen klaeren">Klären</span>
+            {% for grund in z.gruende %}<div class="grund">{{ grund }}</div>{% endfor %}
           </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
+    {% endif %}
 
     <p style="margin-top: 1.5rem;">
       <button class="knopf" type="submit">

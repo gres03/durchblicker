@@ -8,7 +8,7 @@ durchblicker.at KFZ-Rechner einträgt. Füllt nur aus — klickt nie auf
 
 1. `git clone https://github.com/gres03/durchblicker.git && cd durchblicker`
 2. Setup-Skript ausführen:
-   - Windows: `.\setup.ps1`
+   - Windows: `.\setup.ps1` im Terminal, oder einfach `Setup_starten.bat` doppelklicken
    - macOS/Linux: `./setup.sh`
 
    Das Skript legt eine venv an, installiert Abhängigkeiten + Playwright-
@@ -26,6 +26,42 @@ Login-Formular: `python login.py --manual`.
 
 Erkundung/Weiterentwicklung: `python explore.py` (dumpt den Rechner-Wizard
 Schritt für Schritt nach `./exploration/`, siehe `feldkarte.md`).
+
+## Auf einem weiteren PC einrichten (z.B. für einen Kollegen/Angehörigen)
+
+Am einfachsten **ohne Git/GitHub auf dem anderen PC**, wenn dieses Projekt
+bereits in einem OneDrive-Ordner liegt (wie hier):
+
+1. Diesen Projektordner (bzw. den übergeordneten OneDrive-Ordner) mit dem
+   OneDrive-Konto der anderen Person teilen (OneDrive-Web: Ordner
+   auswählen -> "Freigeben"). Sie muss die Freigabe annehmen und den
+   Ordner zu ihrem eigenen OneDrive hinzufügen.
+2. Auf ihrem PC: OneDrive synct den Ordner automatisch herunter. Rechtsklick
+   auf den Projektordner -> "Immer auf diesem Gerät behalten" (nicht nur
+   "Bei Bedarf verfügbar"), damit Python auf echte Dateien zugreifen kann.
+3. Python 3.11+ auf ihrem PC installieren, falls noch nicht vorhanden
+   (python.org, beim Installer "Add python.exe to PATH" anhaken).
+4. Einmalig `Setup_starten.bat` doppelklicken (Windows) bzw. `./setup.sh`
+   ausführen (Mac/Linux). Falls eine `.env` schon mitsynct ist (z.B. weil
+   du sie schon eingerichtet hast), werden dabei automatisch dieselben
+   Zugangsdaten übernommen — es wird dann NICHT erneut nachgefragt.
+   Möchte die andere Person einen eigenen, unabhängigen Gemini-API-Key
+   (kostenlos, https://aistudio.google.com/apikey), einfach vorher den
+   `GEMINI_API_KEY`-Wert in `.env` von Hand ändern.
+5. Danach reicht im Alltag ein Doppelklick auf `Webapp_starten.bat`.
+
+**Updates:** Ein `git pull` auf deinem PC synct die geänderten Dateien
+über OneDrive automatisch zum anderen PC — ohne dass dort irgendwer Git
+anfassen muss.
+
+**Wichtig:** Nicht gleichzeitig auf beiden PCs an derselben Web-Oberfläche
+arbeiten (dieselbe `aktueller_fall.json` in `web_uploads/`) — das kann zu
+OneDrive-Konfliktkopien führen. Immer nacheinander verwenden.
+
+Braucht die andere Person stattdessen eine eigene, unabhängige Kopie ohne
+geteiltes OneDrive (z.B. per USB-Stick): denselben Projektordner
+kopieren (der `.venv/`-Unterordner kann weggelassen werden, `Setup_starten.bat`
+legt ihn neu an), dann ab Schritt 3 oben weitermachen.
 
 ## Stand
 
@@ -142,6 +178,7 @@ statt zu raten (`DurchblickerPortal.unterstuetzter_pfad`).
 - `app.py` — lokale Web-Oberflaeche (Upload -> Erkennung -> Pruefen -> Ausfuellen), `templates/`
 - `extract.py` — automatische Dokumentenerkennung ueber die Gemini API (kostenloses Kontingent)
 - `extraktion_anfrage.txt` — Textvorlage fuer die manuelle Dokumentenerkennung via claude.ai (Fallback ohne API-Key)
+- `Setup_starten.bat` — Doppelklick-Wrapper fuer `setup.ps1` (Windows, umgeht die PowerShell-Ausfuehrungsrichtlinie)
 - `Webapp_starten.bat` / `webapp_starten.sh` — Start-Wrapper fuer `app.py`
 - `start.py` — ein Befehl fuer den kompletten CLI-Ablauf (mapping -> confirm -> fill)
 - `Fall_starten.bat` / `fall_starten.sh` — Drag-and-drop-Wrapper um `start.py`

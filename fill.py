@@ -25,6 +25,7 @@ from colorama import Fore, Style, init as colorama_init
 from playwright.sync_api import sync_playwright
 
 from feldbezeichnungen import label
+from portals.base import FeldKlaerungNoetig
 from portals.durchblicker import DurchblickerPortal
 from validate import validiere
 
@@ -88,7 +89,10 @@ def fuelle_fuer_webapp(fall_pfad):
     ansieht/schliesst statt eine Terminal-Eingabe zu machen. Playwright
     wird bewusst NICHT ueber einen 'with'-Block verwaltet, damit der
     Browser nach Rueckkehr dieser Funktion offen bleibt. Liefert
-    (zeilen, fehler_meldung_oder_None)."""
+    (zeilen, fehler_meldung_oder_None, klaerung_or_None) -- klaerung ist
+    ein {"feldpfad", "optionen"}-Dict, wenn der Fehler auf genau ein
+    fall.json-Feld zurueckzufuehren und daher ueber /pruefen erneut
+    klaerbar ist (FeldKlaerungNoetig), sonst None (echte Sackgasse)."""
     fall, portal = _lade_und_pruefe_fall(fall_pfad)
 
     playwright = sync_playwright().start()
@@ -102,12 +106,19 @@ def fuelle_fuer_webapp(fall_pfad):
     try:
         portal.navigate(page)
         portal.fill(page, fall)
+    except FeldKlaerungNoetig as e:
+        dump_fehler(page, "fill_fehler", f"Ausfuellen abgebrochen: {e}")
+        return (
+            [],
+            f"Ausfuellen abgebrochen: {e} (Browser bleibt zur Fehlersuche offen)",
+            {"feldpfad": e.feldpfad, "optionen": e.optionen},
+        )
     except Exception as e:
         dump_fehler(page, "fill_fehler", f"Ausfuellen abgebrochen: {e}")
-        return [], f"Ausfuellen abgebrochen: {e} (Browser bleibt zur Fehlersuche offen)"
+        return [], f"Ausfuellen abgebrochen: {e} (Browser bleibt zur Fehlersuche offen)", None
 
     zeilen = portal.verify(page, fall)
-    return zeilen, None
+    return zeilen, None, None
 
 
 def fuelle_aus(fall_pfad):

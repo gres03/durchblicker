@@ -40,7 +40,7 @@ dieser Struktur:
     "motorleistung_kw": {"wert": <Motorleistung in kW als Zahl oder null -- nur relevant wenn kein Nationalcode vorhanden>, "quelle": "...", "sicher": true/false},
     "bauart": {"wert": "<eine von 'Limousine/Sedan', 'Kombi - PKW', 'SUV', 'Coupé', 'Cabrio/Cabriolet', 'MPV', 'Kombi Transporter', 'Bus', oder null -- nur relevant wenn kein Nationalcode vorhanden>", "quelle": "...", "sicher": true/false},
     "tueren": {"wert": <Anzahl Tueren als Zahl oder null -- nur relevant wenn kein Nationalcode vorhanden>, "quelle": "...", "sicher": true/false},
-    "variante": {"wert": "<genaue Modellvariante/Ausstattungslinie, z.B. '1,6 TDI Comfortline', oder null -- nur relevant wenn kein Nationalcode vorhanden>", "quelle": "...", "sicher": true/false},
+    "variante": {"wert": "<genaue Modellvariante/Ausstattungslinie in normaler Sprache, z.B. '1,6 TDI Comfortline' oder 'Active', oder null -- nur relevant wenn kein Nationalcode vorhanden. NICHT verwenden: Typenschein-Codes, Genehmigungsnummern oder sonstige interne Buchstaben-/Zifferncodes wie 'L/P/HNPJ-C1T200' -- das sind KEINE Ausstattungslinien>", "quelle": "...", "sicher": true/false},
     "sonderausstattung_wert": {"wert": <Euro-Betrag als Zahl oder null>, "quelle": "...", "sicher": true/false},
     "zugelassen": {"wert": "Ja" oder "Nein", "quelle": "...", "sicher": true/false},
     "erstbesitzer": {"wert": "Ja" oder "Nein" (Ja = fabriksneu gekauft), "quelle": "...", "sicher": true/false},
@@ -101,6 +101,15 @@ WICHTIGE REGELN:
   Uebersetze in die naechstliegende der acht genannten Kategorien, wenn du
   dir sicher bist; ist die Zuordnung unklar, "sicher": false setzen statt
   zu raten.
+- "variante": echte Fahrzeugdokumente enthalten oft technische Codes
+  (Typenschein-Nummer, EG-Genehmigungsnummer, interne Schluessel wie
+  "L/P/HNPJ-C1T200") NEBEN oder STATT einer lesbaren Ausstattungslinie.
+  Nimm NUR eine in normaler Sprache lesbare Ausstattungslinie/Trimline
+  (z.B. "Active", "Allure", "Comfortline", "Life", "Style") als variante.
+  Ist im Dokument nur ein technischer Code und keine lesbare Bezeichnung
+  zu finden, "sicher": false und "wert": null setzen -- ein solcher Code
+  passt zu KEINER der Formular-Optionen und wuerde das Ausfuellen
+  ergebnislos abbrechen lassen.
 - Bevor du antwortest: geh das Dokument noch einmal komplett durch und
   vergleiche jeden extrahierten Wert mit der Originalstelle, bevor du die
   finale Antwort gibst.

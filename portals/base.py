@@ -7,6 +7,23 @@ ist spaeter nur ein neues Modul in portals/, das diese Klasse implementiert
 from abc import ABC, abstractmethod
 
 
+class FeldKlaerungNoetig(RuntimeError):
+    """Ausloesbar aus fill(), wenn ein einzelnes Feld nicht automatisch
+    aufgeloest werden konnte (z.B. mehrdeutige/kein Treffer bei einer
+    durchsuchbaren Combobox), aber der Rest des bereits Ausgefuellten
+    gueltig bleibt. Traegt zusaetzlich zur Meldung den betroffenen
+    fall.json-Feldpfad (z.B. 'fahrzeug.variante') und, falls bekannt, die
+    tatsaechlich am Formular angezeigten Optionen -- damit die Web-
+    Oberflaeche das Feld gezielt zur erneuten Klaerung auf /pruefen
+    zurueckgeben kann, statt in einer Sackgasse zu enden (echter
+    Nutzerfall 2026-08-26: ein Fahrzeug mit 5 mehrdeutigen Varianten)."""
+
+    def __init__(self, message, feldpfad, optionen=None):
+        super().__init__(message)
+        self.feldpfad = feldpfad
+        self.optionen = optionen or []
+
+
 class KfzPortal(ABC):
     @abstractmethod
     def login(self, page, email, password):

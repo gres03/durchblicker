@@ -76,6 +76,42 @@ ausgewaehlt werden muss. Deutlich aufwaendiger als der Nationalcode-Weg:
   alle acht Kategorien direkt. End-to-end nachgetestet: VW Golf, Diesel,
   85 kW, Bauart-Rohtext "Schräghecklimousine" -> korrekt zu "Limousine/
   Sedan" uebersetzt und ausgewaehlt -- alle 22 Felder verifiziert.
+- **Bug gefunden + gefixt (echter Nutzerfall, 2026-08-26):** Variante-Feld
+  "L/P/HNPJ-C1T200" (ein Typenschein-/Genehmigungscode aus dem Dokument,
+  keine lesbare Ausstattungslinie) passte zu keiner der 5 gefundenen
+  Fahrzeugtypen (Peugeot 208, Benzin, 55 kW): `variante='L/P/HNPJ-C1T200'
+  passt nicht eindeutig zu genau einem der 5 gefundenen Fahrzeuge: [...]`.
+  Zwei Fixes:
+  1. `extract.py`/`extraktion_anfrage.txt` weisen die Dokumentenerkennung
+     jetzt explizit an, NUR eine in normaler Sprache lesbare
+     Ausstattungslinie (z.B. "Active", "Comfortline") als `variante` zu
+     nehmen -- technische Codes (Typenschein-Nummer, Genehmigungsnummer,
+     interne Schluessel) fuehren zu `sicher:false`/`wert:null` statt
+     einer garantiert unpassenden Rateloesung.
+  2. **Strukturelle Sackgasse behoben:** bisher landete JEDER Fehlschlag
+     der 'Marke und Modell'-Kaskade (Marke/Modell/Treibstoff/kW/Bauart/
+     Tueren/Variante ohne eindeutigen Treffer) auf einer Endseite ohne
+     Weg zurueck -- das Feld war durch `/bestaetigen` schon als
+     `sicher:true` festgeschrieben und tauchte auf `/pruefen` nicht mehr
+     als "Klären" auf, selbst nach "Nächsten Fall bearbeiten" (das setzt
+     nur die Upload-Seite zurueck, nicht das schon bestaetigte Feld).
+     Neue Exception `portals.base.FeldKlaerungNoetig(feldpfad, optionen)`:
+     alle betroffenen Stellen (`_waehle_durchsuchbar` fuer Marke/Modell/
+     Bestehende Versicherung, `_waehle_falls_leer` fuer Treibstoff/kW/
+     Bauart/Tueren, `_waehle_aus_ergebnisliste` fuer Variante) werfen sie
+     jetzt statt eines nackten `RuntimeError` und liefern dabei die am
+     Formular tatsaechlich angezeigten Optionen mit. `fill.py`
+     (`fuelle_fuer_webapp`) und `app.py` (`/bestaetigen`) fangen sie ab,
+     setzen GENAU das betroffene Feld in `aktueller_fall.json` wieder auf
+     `sicher:false` (mit den echten Optionen als `quelle`-Hinweistext) und
+     leiten zurueck zu `/pruefen` -- der Nutzer kann das eine Feld
+     korrigieren, ohne neu hochzuladen oder alle anderen Antworten zu
+     verlieren. Live end-to-end getestet (echter durchblicker.at-Server,
+     `threaded=True`, zwei aufeinanderfolgende Ausfuell-Versuche im
+     SELBEN Flask-Prozess): erster Versuch mit erfundenem Variante-Code
+     schlaegt fehl und setzt das Feld zurueck, `/pruefen` zeigt "Klären"
+     mit den 3 echten Kandidatennamen, zweiter Versuch mit korrekt
+     eingetragenem Namen laeuft vollstaendig durch.
 
 **Update Phase 4 (fill.py, live end-to-end getestet, siehe portals/durchblicker.py):**
 - Tippen-zum-Filtern in durchsuchbaren Comboboxen (Baujahr, Bestehende

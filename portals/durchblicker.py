@@ -9,7 +9,7 @@ from datetime import date
 
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
-from portals.base import KfzPortal
+from portals.base import FeldKlaerungNoetig, KfzPortal
 
 LOGIN_URL = "https://durchblicker.at/konto/auth/anmelden"
 START_URL = "https://durchblicker.at/autoversicherung/vergleich/auto/fahrzeugauswahl"
@@ -94,7 +94,7 @@ def _waehle_direkt(page, trigger_selector, text):
     page.get_by_role("option", name=text, exact=True).click(timeout=10000)
 
 
-def _waehle_durchsuchbar(page, trigger_selector, text):
+def _waehle_durchsuchbar(page, trigger_selector, text, feldpfad=None):
     """Fuer virtualisierte/durchsuchbare Comboboxen (Baujahr, Versicherer,
     Marke, Modell): Tippen filtert die Liste (live verifiziert), dann
     exakte Option klicken. Playwright normalisiert dabei mehrzeilige
@@ -107,7 +107,9 @@ def _waehle_durchsuchbar(page, trigger_selector, text):
     dem Tippen tatsaechlich angezeigten Optionen nach einem einzigen
     case-insensitiven Text-Treffer gesucht. Gibt es keinen oder mehr als
     einen solchen Treffer, wird klar abgebrochen statt eine falsche
-    Option zu waehlen."""
+    Option zu waehlen -- als FeldKlaerungNoetig(feldpfad), wenn ein
+    fall.json-Feldpfad uebergeben wurde, damit die Web-Oberflaeche das
+    Feld gezielt zur erneuten Klaerung zurueckgeben kann."""
     page.click(trigger_selector, timeout=10000)
     page.keyboard.type(text)
     exakt = page.get_by_role("option", name=text, exact=True)
@@ -125,15 +127,21 @@ def _waehle_durchsuchbar(page, trigger_selector, text):
         return
     if len(treffer) == 0:
         gefunden = [o.inner_text() for o in optionen]
-        raise RuntimeError(
+        meldung = (
             f"Keine passende Option fuer '{text}' gefunden (auch nicht "
             f"gross-/kleinschreibungs-unabhaengig). Angezeigte Optionen: {gefunden}"
         )
+        if feldpfad:
+            raise FeldKlaerungNoetig(meldung, feldpfad, gefunden)
+        raise RuntimeError(meldung)
     gefunden = [o.inner_text() for o in treffer]
-    raise RuntimeError(
+    meldung = (
         f"Mehrdeutig: '{text}' passt gross-/kleinschreibungs-unabhaengig auf "
         f"mehrere Optionen: {gefunden}"
     )
+    if feldpfad:
+        raise FeldKlaerungNoetig(meldung, feldpfad, gefunden)
+    raise RuntimeError(meldung)
 
 
 def _klick_weiter(page):
@@ -141,22 +149,29 @@ def _klick_weiter(page):
     page.wait_for_load_state("networkidle")
 
 
-def _waehle_falls_leer(page, selector, gewuenschter_wert, feldname_lesbar, praefix_ok=False):
+def _waehle_falls_leer(page, selector, gewuenschter_wert, feldname_lesbar, feldpfad, praefix_ok=False):
     """Fuer die kaskadierenden Comboboxen im 'Marke und Modell'-Zweig
     (Treibstoff/Motorleistung/Bauart/Tueren): manche Felder sind nach den
     vorherigen Auswahlen schon eindeutig automatisch vorbefuellt -- dann
     NICHT anfassen (live beobachtet 2026-08-25, z.B. bei einem E-Auto mit
     nur einer Motorleistung). Ist das Feld leer, muss ausgewaehlt werden;
-    ohne passenden fall.json-Wert wird klar abgebrochen statt zu raten.
-    praefix_ok=True fuer Felder mit unvorhersehbarem Optionstext-Zusatz
-    (z.B. kW-Feld: '85 kW / 115,5 PS')."""
+    ohne passenden fall.json-Wert wird klar abgebrochen statt zu raten --
+    als FeldKlaerungNoetig(feldpfad, optionen), damit die Web-Oberflaeche
+    das Feld gezielt zur erneuten Klaerung auf /pruefen zurueckgeben kann,
+    statt in einer Sackgasse zu enden. praefix_ok=True fuer Felder mit
+    unvorhersehbarem Optionstext-Zusatz (z.B. kW-Feld: '85 kW / 115,5 PS')."""
     aktuell = page.input_value(selector)
     if aktuell:
         return aktuell
     if gewuenschter_wert is None:
-        raise RuntimeError(
+        page.click(selector, timeout=10000)
+        page.wait_for_timeout(300)
+        optionen = [o.inner_text().strip() for o in page.get_by_role("option").all()]
+        page.keyboard.press("Escape")
+        raise FeldKlaerungNoetig(
             f"Das Formular verlangt eine Auswahl fuer '{feldname_lesbar}', aber fall.json "
-            f"enthaelt keinen Wert dafuer. Bitte ergaenzen (siehe feldkarte.md)."
+            f"enthaelt keinen Wert dafuer.",
+            feldpfad, optionen,
         )
     gewuenschter_text = str(gewuenschter_wert).replace(".", ",")
     page.click(selector, timeout=10000)
@@ -168,18 +183,21 @@ def _waehle_falls_leer(page, selector, gewuenschter_wert, feldname_lesbar, praef
             listbox = lb
             break
     treffer = None
+    optionen_angezeigt = []
     if listbox:
         for opt in listbox.query_selector_all("[role=option]"):
             text = (opt.inner_text() or "").strip()
+            optionen_angezeigt.append(text)
             norm = text.replace(".", ",")
             if norm == gewuenschter_text or (praefix_ok and norm.startswith(gewuenschter_text)):
                 treffer = opt
                 break
     if treffer is None:
         page.keyboard.press("Escape")
-        raise RuntimeError(
+        raise FeldKlaerungNoetig(
             f"Kein Treffer fuer '{feldname_lesbar}' = '{gewuenschter_wert}' unter den "
-            f"verfuegbaren Optionen gefunden."
+            f"verfuegbaren Optionen gefunden.",
+            feldpfad, optionen_angezeigt,
         )
     treffer.click(timeout=8000)
     page.wait_for_timeout(500)
@@ -224,17 +242,19 @@ def _waehle_aus_ergebnisliste(page, variante_wert):
         return zeilen[0][1]
     if not variante_wert:
         namen = [t.splitlines()[0] for _, t in zeilen]
-        raise RuntimeError(
+        raise FeldKlaerungNoetig(
             f"{len(zeilen)} passende Fahrzeuge gefunden, aber fall.json enthaelt keine "
-            f"'variante' zur eindeutigen Auswahl. Gefundene Typen: {namen}"
+            f"'variante' zur eindeutigen Auswahl.",
+            "fahrzeug.variante", namen,
         )
     norm_ziel = variante_wert.strip().lower().replace(".", ",")
     treffer = [(r, t) for r, t in zeilen if norm_ziel in t.strip().lower().replace(".", ",")]
     if len(treffer) != 1:
         namen = [t.splitlines()[0] for _, t in zeilen]
-        raise RuntimeError(
+        raise FeldKlaerungNoetig(
             f"variante='{variante_wert}' passt nicht eindeutig zu genau einem der "
-            f"{len(zeilen)} gefundenen Fahrzeuge: {namen}"
+            f"{len(zeilen)} gefundenen Fahrzeuge.",
+            "fahrzeug.variante", namen,
         )
     treffer[0][0].click(timeout=8000)
     return treffer[0][1]
@@ -358,32 +378,35 @@ class DurchblickerPortal(KfzPortal):
             # passenden Fahrzeugtypen.
             page.get_by_text("Marke und Modell", exact=False).click(timeout=10000)
 
-            _waehle_durchsuchbar(page, "#auto\\.fahrzeug\\.marke-combobox", fz["marke"]["wert"])
+            _waehle_durchsuchbar(page, "#auto\\.fahrzeug\\.marke-combobox", fz["marke"]["wert"], feldpfad="fahrzeug.marke")
             pruefe("fahrzeug.marke", fz["marke"]["wert"], page.input_value("#auto\\.fahrzeug\\.marke-combobox"), ignore_case=True)
 
-            _waehle_durchsuchbar(page, "#auto\\.fahrzeug\\.modell-combobox", fz["modell"]["wert"])
+            _waehle_durchsuchbar(page, "#auto\\.fahrzeug\\.modell-combobox", fz["modell"]["wert"], feldpfad="fahrzeug.modell")
             pruefe("fahrzeug.modell", fz["modell"]["wert"], page.input_value("#auto\\.fahrzeug\\.modell-combobox"), ignore_case=True)
 
             treibstoff_soll = fz.get("treibstoff", {}).get("wert")
             treibstoff_ist = _waehle_falls_leer(
-                page, "#auto\\.fahrzeug\\.treibstoff-combobox", treibstoff_soll, "Treibstoff"
+                page, "#auto\\.fahrzeug\\.treibstoff-combobox", treibstoff_soll, "Treibstoff", "fahrzeug.treibstoff"
             )
             pruefe_kaskade("fahrzeug.treibstoff", treibstoff_soll, treibstoff_ist)
 
             kw_soll = fz.get("motorleistung_kw", {}).get("wert")
             kw_ist = _waehle_falls_leer(
-                page, "#auto\\.fahrzeug\\.kw-combobox", kw_soll, "Motorleistung (kW)", praefix_ok=True
+                page, "#auto\\.fahrzeug\\.kw-combobox", kw_soll, "Motorleistung (kW)", "fahrzeug.motorleistung_kw",
+                praefix_ok=True,
             )
             pruefe_kaskade("fahrzeug.motorleistung_kw", kw_soll, kw_ist, praefix_ok=True)
 
             bauart_soll = fz.get("bauart", {}).get("wert")
-            bauart_ist = _waehle_falls_leer(page, "#auto\\.fahrzeug\\.bauart-combobox", bauart_soll, "Bauart")
+            bauart_ist = _waehle_falls_leer(
+                page, "#auto\\.fahrzeug\\.bauart-combobox", bauart_soll, "Bauart", "fahrzeug.bauart"
+            )
             pruefe_kaskade("fahrzeug.bauart", bauart_soll, bauart_ist)
 
             tueren_sel = "#auto\\.fahrzeug\\.tueren-combobox"
             if page.query_selector(tueren_sel):
                 tueren_soll = fz.get("tueren", {}).get("wert")
-                tueren_ist = _waehle_falls_leer(page, tueren_sel, tueren_soll, "Anzahl Türen")
+                tueren_ist = _waehle_falls_leer(page, tueren_sel, tueren_soll, "Anzahl Türen", "fahrzeug.tueren")
                 pruefe_kaskade("fahrzeug.tueren", tueren_soll, tueren_ist)
 
             variante_soll = fz.get("variante", {}).get("wert")
@@ -435,7 +458,10 @@ class DurchblickerPortal(KfzPortal):
         pruefe("versicherungsnehmer.bonus_malus_stufe", vn["bonus_malus_stufe"]["wert"],
                page.inner_text("#auto\\.vn\\.bmstufe-select").strip())
 
-        _waehle_durchsuchbar(page, "#auto\\.vn\\.versicherer-combobox", vn["bestehende_versicherung"]["wert"])
+        _waehle_durchsuchbar(
+            page, "#auto\\.vn\\.versicherer-combobox", vn["bestehende_versicherung"]["wert"],
+            feldpfad="versicherungsnehmer.bestehende_versicherung",
+        )
         pruefe("versicherungsnehmer.bestehende_versicherung", vn["bestehende_versicherung"]["wert"],
                page.input_value("#auto\\.vn\\.versicherer-combobox"), ignore_case=True)
 

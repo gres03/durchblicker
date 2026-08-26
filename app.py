@@ -216,9 +216,28 @@ def bestaetigen():
         return redirect(url_for("pruefen"))
 
     try:
-        zeilen, fehlermeldung = fuelle_fuer_webapp(FALL_PFAD)
+        zeilen, fehlermeldung, klaerung = fuelle_fuer_webapp(FALL_PFAD)
     except ValueError as e:
         return render_template("ergebnis.html", zeilen=[], fehlermeldung=str(e))
+
+    if klaerung:
+        # Fehler laesst sich auf genau ein Feld zurueckfuehren (z.B.
+        # mehrdeutige Fahrzeug-Variante) -- Feld erneut zur Klaerung
+        # oeffnen statt in einer Sackgasse zu enden. Das schon geoeffnete
+        # Browserfenster vom fehlgeschlagenen Versuch bleibt bewusst
+        # offen (siehe fuelle_fuer_webapp) und wird bei einem erneuten
+        # Bestaetigen-Klick durch ein neues ersetzt.
+        fall = lade_fall()
+        optionen_text = ", ".join(f"'{o}'" for o in klaerung["optionen"]) if klaerung["optionen"] else "keine"
+        _set_feld(fall, klaerung["feldpfad"], {
+            "wert": None,
+            "quelle": f"Automatische Auswahl nicht eindeutig -- bitte GENAU einen dieser "
+                      f"Formular-Werte eintragen: {optionen_text}",
+            "sicher": False,
+        })
+        speichere_fall(fall)
+        return redirect(url_for("pruefen"))
+
     for z in zeilen:
         z["label"] = label(z["pfad"])
     return render_template("ergebnis.html", zeilen=zeilen, fehlermeldung=fehlermeldung)

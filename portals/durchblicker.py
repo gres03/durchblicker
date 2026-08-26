@@ -16,6 +16,45 @@ START_URL = "https://durchblicker.at/autoversicherung/vergleich/auto/fahrzeugaus
 COOKIE_ACCEPT_NAME = "Alle Cookies akzeptieren"
 LOGIN_ERROR_SELECTOR = ".alert.error-container .error-message"
 
+# Felder, die NICHT vorab bestaetigt sein muessen, bevor fill() startet --
+# sind sie unklar (sicher:false), pausiert fill() an genau dieser Stelle
+# und laesst den Menschen DIREKT im Browser eintragen/klicken (siehe
+# FeldKlaerungNoetig, _boolean_oder_pausiere & co.). Bewusst NICHT in
+# dieser Liste: Felder, die eine Wizard-VERZWEIGUNG steuern, deren
+# Alternativ-Zweig nicht (vollstaendig) live erkundet ist (zugelassen,
+# finanzierung, identifikationsmethode/nationalcode/marke+modell) -- dort
+# wuerde ein Live-Klick in unbekanntes Terrain fuehren, das fill() nicht
+# weiter ausfuellen kann. Ebenso nicht enthalten: Felder mit einem
+# bereits automatischen Formular-Standard (bonus_malus_stufe,
+# nationalitaet, versicherungsschutz_praeferenz, sonderausstattung_wert),
+# die praktisch nie unklar sind (siehe mapping.py).
+LIVE_KLAERBARE_FELDER = {
+    "fahrzeug.erstbesitzer",
+    "fahrzeug.erstzulassung_pkw",
+    "fahrzeug.erstzulassung_auf_sie",
+    "fahrzeug.treibstoff",
+    "fahrzeug.motorleistung_kw",
+    "fahrzeug.bauart",
+    "fahrzeug.tueren",
+    "fahrzeug.variante",
+    "versicherungsnehmer.bestehende_versicherung",
+    "versicherungsnehmer.zweitwagen",
+    "versicherungsnehmer.anmeldung_als",
+    "versicherungsnehmer.firmenbucheintrag",
+    "versicherungsnehmer.geburtsdatum",
+    "versicherungsnehmer.plz",
+    "versicherungsnehmer.email",
+    "produkt.kasko_zusatzdeckung",
+    "produkt.kaskovariante",
+    # NICHT enthalten: fahrzeug.marke/modell -- koennen strukturell nicht
+    # unklar sein, wenn identifikationsmethode bereits 'marke_modell'
+    # ergeben hat (bestimme_identifikationsmethode in mapping.py setzt das
+    # nur, wenn BEIDE bereits sicher vorliegen). Waeren sie es dennoch,
+    # deutet das auf einen tieferen Fehler hin und soll weiterhin vorab
+    # blockieren statt live an einer nicht abgesicherten Stelle zu
+    # pausieren.
+}
+
 
 def dismiss_cookie_banner(page):
     """Cookie-Banner erscheint zeitlich variabel (0-30s) und blockiert
@@ -161,6 +200,84 @@ def _versuche_oder_pausiere(aktion):
     return False
 
 
+def _boolean_oder_pausiere(feldpfad, feldname_lesbar, wert, radios):
+    """Generator-Helfer fuer ein Ja/Nein-Radiopaar (nth(0)=Ja, nth(1)=Nein):
+    ist wert bekannt, wird direkt geklickt. Ist wert None (nicht aus
+    dem/den Dokument(en) lesbar -- z.B. Zweitwagen, Erstbesitzer), wird
+    pausiert und der Mensch waehlt DIREKT im Browser. Liefert in beiden
+    Faellen (ist_wert, manuell)."""
+    if wert is not None:
+        radios.nth(0 if wert else 1).click(timeout=8000)
+        return _lies_ja_nein(radios), False
+    yield FeldKlaerungNoetig(
+        f"'{feldname_lesbar}' konnte nicht aus dem/den Dokument(en) gelesen werden. "
+        "Bitte direkt im Browser auswählen.",
+        feldpfad, ["Ja", "Nein"],
+    )
+    return _lies_ja_nein(radios), True
+
+
+def _enum_oder_pausiere(feldpfad, feldname_lesbar, wert, radios, optionen):
+    """Wie _boolean_oder_pausiere, aber fuer eine Radiogruppe mit mehr als
+    zwei benannten Optionen (z.B. Anmeldung als, Kaskovariante)."""
+    if wert is not None:
+        radios.nth(optionen.index(wert)).click(timeout=8000)
+        return _lies_enum_radio(radios, optionen), False
+    yield FeldKlaerungNoetig(
+        f"'{feldname_lesbar}' konnte nicht aus dem/den Dokument(en) gelesen werden. "
+        "Bitte direkt im Browser auswählen.",
+        feldpfad, optionen,
+    )
+    return _lies_enum_radio(radios, optionen), True
+
+
+def _datum_oder_pausiere(page, selector, feldpfad, feldname_lesbar, iso_datum):
+    """Wie _boolean_oder_pausiere, aber fuer ein segmentiertes Datumsfeld
+    (z.B. Geburtsdatum, Erstzulassung) -- reine Kundenauskuenfte wie das
+    Geburtsdatum stehen auf keinem Fahrzeugdokument."""
+    if iso_datum is not None:
+        _fuelle_segmentiertes_datum(page, selector, iso_datum)
+        return _lies_segmentiertes_datum(page, selector), False
+    yield FeldKlaerungNoetig(
+        f"'{feldname_lesbar}' konnte nicht aus dem/den Dokument(en) gelesen werden. "
+        "Bitte Datum direkt im Browser eintragen.",
+        feldpfad, [],
+    )
+    return _lies_segmentiertes_datum(page, selector), True
+
+
+def _text_oder_pausiere(page, selector, feldpfad, feldname_lesbar, wert):
+    """Wie _boolean_oder_pausiere, aber fuer ein einfaches Textfeld (PLZ,
+    E-Mail) -- reine Kundenauskuenfte, die auf keinem Fahrzeugdokument
+    stehen."""
+    if wert is not None:
+        page.fill(selector, wert)
+        return page.input_value(selector), False
+    yield FeldKlaerungNoetig(
+        f"'{feldname_lesbar}' konnte nicht aus dem/den Dokument(en) gelesen werden. "
+        "Bitte direkt im Browser eintragen.",
+        feldpfad, [],
+    )
+    return page.input_value(selector), True
+
+
+def _durchsuchbar_oder_pausiere(page, selector, feldpfad, feldname_lesbar, wert):
+    """Wie _boolean_oder_pausiere, aber fuer eine durchsuchbare Combobox
+    (z.B. Bestehende Versicherung) -- kombiniert mit der bestehenden
+    Mehrdeutigkeits-Behandlung aus _waehle_durchsuchbar()."""
+    if wert is None:
+        yield FeldKlaerungNoetig(
+            f"'{feldname_lesbar}' konnte nicht aus dem/den Dokument(en) gelesen werden. "
+            "Bitte direkt im Browser eintragen.",
+            feldpfad, [],
+        )
+        return page.input_value(selector), True
+    manuell = yield from _versuche_oder_pausiere(
+        lambda: _waehle_durchsuchbar(page, selector, wert, feldpfad=feldpfad)
+    )
+    return page.input_value(selector), manuell
+
+
 def _gewaehltes_fahrzeug_name(page):
     """Liest den Fahrzeugnamen aus der 'Gewähltes Fahrzeug:'-Bestaetigung,
     die nach einem Klick auf eine Ergebniszeile die komplette Radioliste
@@ -294,6 +411,8 @@ def _waehle_aus_ergebnisliste(page, variante_wert):
 
 
 class DurchblickerPortal(KfzPortal):
+    LIVE_KLAERBARE_FELDER = LIVE_KLAERBARE_FELDER
+
     def login(self, page, email, password):
         page.goto(LOGIN_URL, wait_until="networkidle")
         dismiss_cookie_banner(page)
@@ -533,10 +652,20 @@ class DurchblickerPortal(KfzPortal):
         zugelassen_radios.nth(0).click(timeout=8000)  # Ja
         pruefe("fahrzeug.zugelassen", fz["zugelassen"]["wert"], _lies_ja_nein(zugelassen_radios))
 
-        erstbesitzer_wert = fz["erstbesitzer"]["wert"]
+        # erstbesitzer entscheidet, ob 'Erstzulassung auf Sie' ueberhaupt im
+        # DOM erscheint (siehe unten) -- beide Zweige sind implementiert,
+        # daher live klaerbar. Massgeblich fuer die weitere Verzweigung ist
+        # der TATSAECHLICH ausgewaehlte Wert (erstbesitzer_ist), nicht der
+        # urspruengliche fall.json-Wert -- der kann bei manueller Klaerung
+        # vom Menschen anders entschieden werden.
         erstbesitzer_radios = page.locator('input[name="auto.fahrzeug.erstbesitzv-radiogroup"]')
-        erstbesitzer_radios.nth(0 if erstbesitzer_wert else 1).click(timeout=8000)
-        pruefe("fahrzeug.erstbesitzer", erstbesitzer_wert, _lies_ja_nein(erstbesitzer_radios))
+        erstbesitzer_ist, manuell = yield from _boolean_oder_pausiere(
+            "fahrzeug.erstbesitzer", "Fabriksneu gekauft (Erstbesitzer)", fz["erstbesitzer"]["wert"], erstbesitzer_radios
+        )
+        if manuell:
+            pruefe_manuell("fahrzeug.erstbesitzer", erstbesitzer_ist)
+        else:
+            pruefe("fahrzeug.erstbesitzer", fz["erstbesitzer"]["wert"], erstbesitzer_ist)
 
         # Bei Erstbesitzer=Ja (fabriksneu) zeigt das Formular NUR
         # 'Erstzulassung des PKW' -- das zweite Feld 'Erstzulassung auf
@@ -544,14 +673,24 @@ class DurchblickerPortal(KfzPortal):
         # Daten fuer einen Erstbesitzer per Definition identisch sind.
         # Live verifiziert 2026-08-25.
         page.wait_for_selector("#auto\\.fahrzeug\\.erstzulassung", timeout=10000)
-        _fuelle_segmentiertes_datum(page, "#auto\\.fahrzeug\\.erstzulassung", fz["erstzulassung_pkw"]["wert"])
-        pruefe("fahrzeug.erstzulassung_pkw", fz["erstzulassung_pkw"]["wert"],
-               _lies_segmentiertes_datum(page, "#auto\\.fahrzeug\\.erstzulassung"))
+        erstzulassung_pkw_ist, manuell = yield from _datum_oder_pausiere(
+            page, "#auto\\.fahrzeug\\.erstzulassung", "fahrzeug.erstzulassung_pkw",
+            "Erstzulassung des Fahrzeugs", fz["erstzulassung_pkw"]["wert"],
+        )
+        if manuell:
+            pruefe_manuell("fahrzeug.erstzulassung_pkw", erstzulassung_pkw_ist)
+        else:
+            pruefe("fahrzeug.erstzulassung_pkw", fz["erstzulassung_pkw"]["wert"], erstzulassung_pkw_ist)
 
-        if not erstbesitzer_wert:
-            _fuelle_segmentiertes_datum(page, "#auto\\.fahrzeug\\.erstzulassungvnv", fz["erstzulassung_auf_sie"]["wert"])
-            pruefe("fahrzeug.erstzulassung_auf_sie", fz["erstzulassung_auf_sie"]["wert"],
-                   _lies_segmentiertes_datum(page, "#auto\\.fahrzeug\\.erstzulassungvnv"))
+        if not erstbesitzer_ist:
+            erstzulassung_auf_sie_ist, manuell = yield from _datum_oder_pausiere(
+                page, "#auto\\.fahrzeug\\.erstzulassungvnv", "fahrzeug.erstzulassung_auf_sie",
+                "Zulassung auf den Halter", fz["erstzulassung_auf_sie"]["wert"],
+            )
+            if manuell:
+                pruefe_manuell("fahrzeug.erstzulassung_auf_sie", erstzulassung_auf_sie_ist)
+            else:
+                pruefe("fahrzeug.erstzulassung_auf_sie", fz["erstzulassung_auf_sie"]["wert"], erstzulassung_auf_sie_ist)
 
         finanzierung_radios = page.locator('input[name="auto.fahrzeug.finanzierung-radiogroup"]')
         finanzierung_radios.nth(0).click(timeout=8000)  # Nein
@@ -566,23 +705,24 @@ class DurchblickerPortal(KfzPortal):
                page.inner_text("#auto\\.vn\\.bmstufe-select").strip())
 
         versicherer_sel = "#auto\\.vn\\.versicherer-combobox"
-        manuell = yield from _versuche_oder_pausiere(
-            lambda: _waehle_durchsuchbar(
-                page, versicherer_sel, vn["bestehende_versicherung"]["wert"],
-                feldpfad="versicherungsnehmer.bestehende_versicherung",
-            )
+        versicherer_ist, manuell = yield from _durchsuchbar_oder_pausiere(
+            page, versicherer_sel, "versicherungsnehmer.bestehende_versicherung",
+            "Bestehende Versicherung", vn["bestehende_versicherung"]["wert"],
         )
-        versicherer_ist = page.input_value(versicherer_sel)
         if manuell:
             pruefe_manuell("versicherungsnehmer.bestehende_versicherung", versicherer_ist)
         else:
             pruefe("versicherungsnehmer.bestehende_versicherung", vn["bestehende_versicherung"]["wert"],
                    versicherer_ist, ignore_case=True)
 
-        zweitwagen_index = 0 if vn["zweitwagen"]["wert"] else 1
         zweitwagen_radios = page.locator('input[name="auto.rabatte.zweitwagen-radiogroup"]')
-        zweitwagen_radios.nth(zweitwagen_index).click(timeout=8000)
-        pruefe("versicherungsnehmer.zweitwagen", vn["zweitwagen"]["wert"], _lies_ja_nein(zweitwagen_radios))
+        zweitwagen_ist, manuell = yield from _boolean_oder_pausiere(
+            "versicherungsnehmer.zweitwagen", "Zweitwagen im Haushalt", vn["zweitwagen"]["wert"], zweitwagen_radios
+        )
+        if manuell:
+            pruefe_manuell("versicherungsnehmer.zweitwagen", zweitwagen_ist)
+        else:
+            pruefe("versicherungsnehmer.zweitwagen", vn["zweitwagen"]["wert"], zweitwagen_ist)
 
         _klick_weiter(page)
 
@@ -598,12 +738,28 @@ class DurchblickerPortal(KfzPortal):
         # "durchblicker Empfehlung" kann Kasko selbststaendig vorschlagen und
         # die Checkbox unabhaengig von fall.json vorbelegen (live entdeckt
         # 2026-08-24) -- daher aktiv auf den Sollwert setzen, in BEIDE
-        # Richtungen, nicht nur ergaenzend anhaken.
-        kasko_gewuenscht = pr.get("kasko_zusatzdeckung", {}).get("wert") is True
+        # Richtungen, nicht nur ergaenzend anhaken. kasko_wert=None (echt
+        # unklar, kommt praktisch kaum vor -- siehe Formular-Standard in
+        # mapping.py) wird live geklaert statt stillschweigend als 'Nein'
+        # behandelt.
+        kasko_wert = pr.get("kasko_zusatzdeckung", {}).get("wert")
         kasko = page.get_by_role("checkbox", name="Kasko", exact=True)
-        if kasko.is_checked() != kasko_gewuenscht:
-            kasko.click(timeout=8000)
-        pruefe("produkt.kasko_zusatzdeckung", kasko_gewuenscht, kasko.is_checked())
+        if kasko_wert is not None:
+            if kasko.is_checked() != kasko_wert:
+                kasko.click(timeout=8000)
+            manuell = False
+        else:
+            yield FeldKlaerungNoetig(
+                "'Kasko-Zusatzdeckung' konnte nicht aus dem/den Dokument(en) gelesen werden. "
+                "Bitte direkt im Browser ankreuzen oder leer lassen.",
+                "produkt.kasko_zusatzdeckung", ["Ja", "Nein"],
+            )
+            manuell = True
+        kasko_ist = kasko.is_checked()
+        if manuell:
+            pruefe_manuell("produkt.kasko_zusatzdeckung", kasko_ist)
+        else:
+            pruefe("produkt.kasko_zusatzdeckung", kasko_wert, kasko_ist)
 
         # Wenn Kasko am Ende aktiv ist, verlangt das Formular zusaetzlich
         # eine Kaskovariante (Vollkasko/Teilkasko) -- dieses Feld erscheint
@@ -614,54 +770,74 @@ class DurchblickerPortal(KfzPortal):
         # fuer 'Weiter') -- pruefbar ist daher NICHT ihre DOM-Praesenz,
         # sondern der tatsaechliche Kasko-Checkbox-Zustand.
         kaskodeckung_radios = page.locator('input[name="auto.produkt.kaskodeckung-radiogroup"]')
-        if kasko.is_checked():
-            kaskovariante = pr.get("kaskovariante", {}).get("wert")
-            if kaskovariante not in ("Vollkasko", "Teilkasko"):
-                raise RuntimeError(
-                    "Das Formular verlangt fuer dieses Fahrzeug eine Kaskovariante "
-                    "(Vollkasko/Teilkasko), aber fall.json enthaelt keinen gueltigen "
-                    "Wert fuer produkt.kaskovariante. Bitte ergaenzen (siehe feldkarte.md)."
-                )
-            idx = {"Vollkasko": 0, "Teilkasko": 1}[kaskovariante]
-            kaskodeckung_radios.nth(idx).click(timeout=8000)
-            pruefe("produkt.kaskovariante", kaskovariante,
-                   _lies_enum_radio(kaskodeckung_radios, ["Vollkasko", "Teilkasko"]))
+        if kasko_ist:
+            kaskovariante_wert = pr.get("kaskovariante", {}).get("wert")
+            kaskovariante_ist, manuell = yield from _enum_oder_pausiere(
+                "produkt.kaskovariante", "Kaskovariante", kaskovariante_wert,
+                kaskodeckung_radios, ["Vollkasko", "Teilkasko"],
+            )
+            if manuell:
+                pruefe_manuell("produkt.kaskovariante", kaskovariante_ist)
+            else:
+                pruefe("produkt.kaskovariante", kaskovariante_wert, kaskovariante_ist)
 
         _klick_weiter(page)
 
         # --- Schritt 5: Person / Versicherungsnehmer ---
-        anmeldung_als = vn["anmeldung_als"]["wert"]
+        # anmeldung_als entscheidet, ob 'Firmenbucheintrag' ueberhaupt
+        # erscheint (siehe unten) -- massgeblich ist wieder der TATSAECHLICH
+        # ausgewaehlte Wert (anmeldung_als_ist), nicht der urspruengliche
+        # fall.json-Wert.
         vntyp_radios = page.locator('input[name="auto.vn.vntyp-radiogroup"]')
-        vntyp_radios.nth(0 if anmeldung_als == "Privatperson" else 1).click(timeout=8000)
-        pruefe("versicherungsnehmer.anmeldung_als", anmeldung_als,
-               _lies_enum_radio(vntyp_radios, ["Privatperson", "Einzelunternehmen"]))
+        anmeldung_als_wert = vn["anmeldung_als"]["wert"]
+        anmeldung_als_ist, manuell = yield from _enum_oder_pausiere(
+            "versicherungsnehmer.anmeldung_als", "Anmeldung als", anmeldung_als_wert,
+            vntyp_radios, ["Privatperson", "Einzelunternehmen"],
+        )
+        if manuell:
+            pruefe_manuell("versicherungsnehmer.anmeldung_als", anmeldung_als_ist)
+        else:
+            pruefe("versicherungsnehmer.anmeldung_als", anmeldung_als_wert, anmeldung_als_ist)
 
         # 'Ist Ihr Einzelunternehmen im Firmenbuch eingetragen?' erscheint
         # nur nach Auswahl von 'Einzelunternehmen' -- live entdeckt
         # 2026-08-25.
-        if anmeldung_als == "Einzelunternehmen":
-            firmenbucheintrag = vn.get("firmenbucheintrag", {}).get("wert")
-            if firmenbucheintrag not in (True, False):
-                raise RuntimeError(
-                    "Das Formular verlangt fuer 'Einzelunternehmen' eine Angabe, ob das "
-                    "Unternehmen im Firmenbuch eingetragen ist, aber fall.json enthaelt "
-                    "keinen gueltigen Wert fuer versicherungsnehmer.firmenbucheintrag. "
-                    "Bitte ergaenzen (siehe feldkarte.md)."
-                )
+        if anmeldung_als_ist == "Einzelunternehmen":
             firmenbuch_radios = page.locator('input[name="auto.vn.firmenbucheintrag-radiogroup"]')
-            firmenbuch_radios.nth(0 if firmenbucheintrag else 1).click(timeout=8000)
-            pruefe("versicherungsnehmer.firmenbucheintrag", firmenbucheintrag,
-                   _lies_ja_nein(firmenbuch_radios))
+            firmenbucheintrag_wert = vn.get("firmenbucheintrag", {}).get("wert")
+            firmenbucheintrag_ist, manuell = yield from _boolean_oder_pausiere(
+                "versicherungsnehmer.firmenbucheintrag", "Einzelunternehmen im Firmenbuch eingetragen",
+                firmenbucheintrag_wert, firmenbuch_radios,
+            )
+            if manuell:
+                pruefe_manuell("versicherungsnehmer.firmenbucheintrag", firmenbucheintrag_ist)
+            else:
+                pruefe("versicherungsnehmer.firmenbucheintrag", firmenbucheintrag_wert, firmenbucheintrag_ist)
 
-        _fuelle_segmentiertes_datum(page, "#auto\\.vn\\.geburtsdatum", vn["geburtsdatum"]["wert"])
-        pruefe("versicherungsnehmer.geburtsdatum", vn["geburtsdatum"]["wert"],
-               _lies_segmentiertes_datum(page, "#auto\\.vn\\.geburtsdatum"))
+        geburtsdatum_ist, manuell = yield from _datum_oder_pausiere(
+            page, "#auto\\.vn\\.geburtsdatum", "versicherungsnehmer.geburtsdatum",
+            "Geburtsdatum", vn["geburtsdatum"]["wert"],
+        )
+        if manuell:
+            pruefe_manuell("versicherungsnehmer.geburtsdatum", geburtsdatum_ist)
+        else:
+            pruefe("versicherungsnehmer.geburtsdatum", vn["geburtsdatum"]["wert"], geburtsdatum_ist)
 
-        page.fill("#auto\\.vn\\.region\\.plz", vn["plz"]["wert"])
-        pruefe("versicherungsnehmer.plz", vn["plz"]["wert"], page.input_value("#auto\\.vn\\.region\\.plz"))
+        plz_ist, manuell = yield from _text_oder_pausiere(
+            page, "#auto\\.vn\\.region\\.plz", "versicherungsnehmer.plz", "Postleitzahl", vn["plz"]["wert"]
+        )
+        if manuell:
+            pruefe_manuell("versicherungsnehmer.plz", plz_ist)
+        else:
+            pruefe("versicherungsnehmer.plz", vn["plz"]["wert"], plz_ist)
 
-        page.fill("#auto\\.vn\\.mail", vn["email"]["wert"])
-        pruefe("versicherungsnehmer.email", vn["email"]["wert"], page.input_value("#auto\\.vn\\.mail"))
+        email_ist, manuell = yield from _text_oder_pausiere(
+            page, "#auto\\.vn\\.mail", "versicherungsnehmer.email", "E-Mail-Adresse", vn["email"]["wert"]
+        )
+        if manuell:
+            pruefe_manuell("versicherungsnehmer.email", email_ist)
+        else:
+            pruefe("versicherungsnehmer.email", vn["email"]["wert"], email_ist)
 
         # ABSICHTLICH KEIN Klick auf "Zum Ergebnis" -- siehe Projektauftrag.
 

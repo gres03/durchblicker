@@ -25,6 +25,14 @@ class FeldKlaerungNoetig(RuntimeError):
 
 
 class KfzPortal(ABC):
+    #: Menge von fall.json-Feldpfaden, die NICHT vor dem Start von fill()
+    #: bestaetigt sein muessen -- sind sie unklar (sicher:false), pausiert
+    #: fill() dort live statt vorab eine Korrektur zu verlangen (siehe
+    #: FeldKlaerungNoetig). Default leer (kein Live-Klaeren unterstuetzt);
+    #: konkrete Portale ueberschreiben das mit den tatsaechlich
+    #: implementierten Feldern.
+    LIVE_KLAERBARE_FELDER = frozenset()
+
     @abstractmethod
     def login(self, page, email, password):
         """Loggt automatisch ein. Wirft bei Fehlschlag eine Exception mit

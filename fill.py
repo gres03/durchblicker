@@ -66,6 +66,18 @@ def dump_fehler(page, name, meldung):
     print(f"HTML-Dump: {html_pfad}", file=sys.stderr)
 
 
+def bereit_zum_ausfuellen(bericht, portal):
+    """True, wenn fill() fuer 'portal' starten darf: keine Schema-/
+    Plausibilitaetsfehler (die deuten auf tatsaechlich falsche/kaputte
+    Werte hin und muessen vorher korrigiert werden), und jedes verbleibende
+    Klaerungsbedarf-Feld liegt in portal.LIVE_KLAERBARE_FELDER -- diese
+    werden NICHT vorab verlangt, sondern live waehrend fill() direkt im
+    Browser geklaert (siehe FeldKlaerungNoetig)."""
+    if bericht["schema_fehler"] or bericht["plausibilitaet_fehler"]:
+        return False
+    return all(k["pfad"] in portal.LIVE_KLAERBARE_FELDER for k in bericht["klaerungsbedarf"])
+
+
 def _lade_und_pruefe_fall(fall_pfad):
     """Laedt fall_pfad, prueft Bestaetigung + unterstuetzten Pfad. Liefert
     (fall, portal) oder wirft ValueError mit einer bereits fertig
@@ -74,14 +86,17 @@ def _lade_und_pruefe_fall(fall_pfad):
     with open(fall_pfad, encoding="utf-8") as f:
         fall = json.load(f)
 
+    portal = DurchblickerPortal()
+
     bericht = validiere(fall)
-    if not bericht["ok"]:
+    if not bereit_zum_ausfuellen(bericht, portal):
         raise ValueError(
-            "fall.json ist nicht bestaetigt. Bitte zuerst 'python confirm.py <fall.json>' "
+            "fall.json enthaelt noch Angaben, die vor dem Ausfuellen korrigiert werden "
+            "muessen (Schema-/Plausibilitaetsfehler oder ein Feld ausserhalb der live im "
+            "Browser klaerbaren Liste). Bitte zuerst 'python confirm.py <fall.json>' "
             "erfolgreich durchlaufen lassen.\n" + json.dumps(bericht, ensure_ascii=False, indent=2)
         )
 
-    portal = DurchblickerPortal()
     unterstuetzt_nicht = portal.unterstuetzter_pfad(fall)
     if unterstuetzt_nicht:
         raise ValueError(

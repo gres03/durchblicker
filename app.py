@@ -21,8 +21,9 @@ from flask import Flask, redirect, render_template, request, url_for
 from confirm import resolve_wert_schema, sammle_gruende
 from extract import ExtraktionsFehler, extrahiere
 from feldbezeichnungen import label
-from fill import FuellSitzung
+from fill import FuellSitzung, bereit_zum_ausfuellen
 from mapping import map_fall
+from portals.durchblicker import DurchblickerPortal
 from validate import alle_felder, lade_schema, validiere
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -163,18 +164,29 @@ def interner_fehler(_e):
 def _baue_pruefen_zeilen(fall, schema, bericht, formular_fehler=None):
     formular_fehler = formular_fehler or {}
     gruende = sammle_gruende(bericht)
+    live_klaerbare_felder = DurchblickerPortal.LIVE_KLAERBARE_FELDER
     zeilen = []
     for pfad, feld in sorted(alle_felder(fall)):
+        unklar = pfad in gruende
         eintrag = {
             "pfad": pfad,
             "label": label(pfad),
             "wert": feld.get("wert"),
             "quelle": feld.get("quelle") or "",
-            "unklar": pfad in gruende,
+            "unklar": unklar,
+            # live_klaerbar: Feld muss NICHT hier korrigiert werden, sondern
+            # wird beim Ausfuellen direkt im Browser abgefragt (siehe
+            # portals/durchblicker.py LIVE_KLAERBARE_FELDER). Nur relevant,
+            # wenn die Zeile ueberhaupt unklar ist -- ein Schema-/
+            # Plausibilitaetsfehler zaehlt NICHT als live klaerbar, auch
+            # wenn der Pfad zufaellig in der Liste steht.
+            "live_klaerbar": unklar and pfad in live_klaerbare_felder and pfad not in [
+                p["pfad"] for p in bericht["plausibilitaet_fehler"]
+            ],
             "gruende": gruende.get(pfad, []),
             "formularfehler": formular_fehler.get(pfad),
         }
-        if eintrag["unklar"]:
+        if eintrag["unklar"] and not eintrag["live_klaerbar"]:
             wert_schema = resolve_wert_schema(schema, pfad)
             eintrag["enum"] = [w for w in wert_schema.get("enum", []) if w is not None]
             eintrag["ist_datum"] = wert_schema.get("format") == "date"
@@ -195,7 +207,7 @@ def pruefen():
     bericht = validiere(fall)
     zeilen = _baue_pruefen_zeilen(fall, schema, bericht)
 
-    return render_template("pruefen.html", zeilen=zeilen, alles_ok=bericht["ok"])
+    return render_template("pruefen.html", zeilen=zeilen)
 
 
 @app.route("/bestaetigen", methods=["POST"])
@@ -219,10 +231,10 @@ def bestaetigen():
     if fehler:
         bericht = validiere(fall)
         zeilen = _baue_pruefen_zeilen(fall, schema, bericht, formular_fehler=fehler)
-        return render_template("pruefen.html", zeilen=zeilen, alles_ok=False)
+        return render_template("pruefen.html", zeilen=zeilen)
 
     bericht = validiere(fall)
-    if not bericht["ok"]:
+    if not bereit_zum_ausfuellen(bericht, DurchblickerPortal()):
         return redirect(url_for("pruefen"))
 
     global _SITZUNG

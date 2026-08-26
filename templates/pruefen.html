@@ -3,25 +3,37 @@
 {% block schritt %}Schritt 2 von 3{% endblock %}
 {% block inhalt %}
   <h1>Daten prüfen</h1>
-  {% set anzahl_unklar = zeilen | selectattr('unklar') | list | length %}
-  {% if anzahl_unklar == 0 %}
-    <p class="hinweis">Alle Angaben sind eindeutig und plausibel. Bereit zum Ausfüllen.</p>
+  {% set muss_geklaert_werden = zeilen | selectattr('unklar') | rejectattr('live_klaerbar') | list %}
+  {% set live_klaerbar_zeilen = zeilen | selectattr('unklar') | selectattr('live_klaerbar') | list %}
+
+  {% if muss_geklaert_werden | length == 0 %}
+    <p class="hinweis">
+      Alle Angaben sind eindeutig und plausibel.
+      {% if live_klaerbar_zeilen %}
+        {{ live_klaerbar_zeilen | length }} Angabe{{ 'n' if live_klaerbar_zeilen | length != 1 else '' }}
+        {{ 'stehen' if live_klaerbar_zeilen | length != 1 else 'steht' }} in keinem Dokument -- dafür hält die
+        Automatisierung kurz an und du trägst sie direkt im Browser ein (siehe unten).
+      {% else %}
+        Bereit zum Ausfüllen.
+      {% endif %}
+    </p>
   {% else %}
     <p class="hinweis">
-      {{ anzahl_unklar }} Angabe{{ 'n' if anzahl_unklar != 1 else '' }} {{ 'sind' if anzahl_unklar != 1 else 'ist' }}
-      unklar oder unplausibel (rot markiert) und {{ 'müssen' if anzahl_unklar != 1 else 'muss' }} bestätigt oder
-      korrigiert werden, bevor automatisch ausgefüllt wird.
+      {{ muss_geklaert_werden | length }} Angabe{{ 'n' if muss_geklaert_werden | length != 1 else '' }}
+      {{ 'sind' if muss_geklaert_werden | length != 1 else 'ist' }} unklar oder unplausibel (rot markiert) und
+      {{ 'müssen' if muss_geklaert_werden | length != 1 else 'muss' }} hier korrigiert werden, bevor automatisch
+      ausgefüllt wird.
     </p>
   {% endif %}
 
   <form method="post" action="{{ url_for('bestaetigen') }}">
-    {% if anzahl_unklar > 0 %}
+    {% if muss_geklaert_werden %}
     <table>
       <thead>
         <tr><th>Feld</th><th>Wert</th><th>Zitat aus dem Dokument</th><th>Status</th></tr>
       </thead>
       <tbody>
-        {% for z in zeilen if z.unklar %}
+        {% for z in muss_geklaert_werden %}
         <tr class="unklar">
           <td>{{ z.label }}</td>
           <td>
@@ -50,9 +62,31 @@
     </table>
     {% endif %}
 
+    {% if live_klaerbar_zeilen %}
+    <h2 style="font-size: 1rem; margin-top: 2rem;">Wird direkt im Browser abgefragt</h2>
+    <p class="hinweis">
+      Diese Angaben stehen in keinem hochgeladenen Dokument. Nichts hier eintragen —
+      die Automatisierung hält beim Ausfüllen kurz an genau dieser Stelle an und du
+      trägst die Angabe direkt im geöffneten Browserfenster ein.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Feld</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for z in live_klaerbar_zeilen %}
+        <tr>
+          <td>{{ z.label }}</td>
+          <td><span class="abzeichen im-browser">Im Browser eintragen</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
     <p style="margin-top: 1.5rem;">
       <button class="knopf" type="submit">
-        {{ "Bestätigen & ausfüllen" if anzahl_unklar == 0 else "Korrekturen speichern" }}
+        {{ "Bestätigen & ausfüllen" if muss_geklaert_werden | length == 0 else "Korrekturen speichern" }}
       </button>
     </p>
   </form>

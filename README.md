@@ -90,16 +90,23 @@ unterschiedlich, zwangslaeufig nicht. Das ist Logik aus vorhandenen Fakten,
 kein Raten -- fehlt eine der beiden Daten, bleibt das Feld weiterhin
 klaerungsbeduerftig statt eine falsche Sicherheit vorzutaeuschen.
 
-Alle anderen Felder (Geburtsdatum, PLZ, Nationalcode, ob das Fahrzeug
-ueberhaupt schon zugelassen ist, bestehende Versicherung, Zweitwagen,
-Kaskovariante bei aktiver Kaskodeckung, ...) bleiben bei Unklarheit
-weiterhin zwingend klaerungsbeduerftig: entweder weil es eine
-Pflichtfrage des Rechners ohne Formular-Default ist (z.B. "bereits
-zugelassen?" -- unser Code unterstuetzt bisher nur den Ja-Zweig), oder
-weil es eine reine Kundenauskunft ist, die auf keinem Fahrzeugdokument
-steht (bestehende Versicherung, Zweitwagen im Haushalt) und daher so oder
-so vom Kunden/Berater kommen muss, egal wie gut die Dokumentenerkennung
-ist.
+**Live im Browser klaeren statt vorab abtippen:** Reine Kundenauskuenfte,
+die auf keinem Fahrzeugdokument stehen (Geburtsdatum, PLZ, E-Mail,
+bestehende Versicherung, Zweitwagen, Erstbesitzer, Anmeldung als,
+Firmenbucheintrag, Kaskovariante, ...) muessen NICHT vorab auf `/pruefen`
+eingetippt werden -- `fill.py` haelt beim Ausfuellen genau an dieser
+Stelle an und laesst den Menschen den Wert DIREKT im bereits geoeffneten
+Browserfenster eintragen (siehe `FeldKlaerungNoetig`,
+`LIVE_KLAERBARE_FELDER` in `portals/durchblicker.py`), bevor automatisch
+mit dem Rest weitergemacht wird. `/pruefen` zeigt diese Felder nur noch
+informativ ("Im Browser eintragen"), nicht als Eingabefeld.
+
+Nur Felder, bei denen ein Live-Klick in einen NICHT erkundeten Wizard-
+Zweig fuehren wuerde (z.B. "bereits zugelassen? Nein" oeffnet einen
+unerkundeten Neuanmeldungs-Zweig), bleiben zwingend vorab
+klaerungsbeduerftig -- sonst wuesste `fill()` beim Fortsetzen nicht,
+welche Felder als naechstes kommen. Siehe `bereit_zum_ausfuellen()` in
+fill.py und die Kommentare an `LIVE_KLAERBARE_FELDER`.
 
 Die einzelnen Schritte lassen sich weiterhin separat aufrufen (z.B. zum
 Debuggen):

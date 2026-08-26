@@ -190,6 +190,70 @@ Versicherung, Zweitwagen, Bonus-Malus-Stufe) zusammen hochgeladen --
 Ergebnis nach `mapping.py`/`validate.py`: `ok: true, klaerungsbedarf: 0`,
 alle 28 Felder automatisch bestaetigt, keine einzige Nachfrage noetig.
 
+**Update 2026-08-26 (Live-Klaeren fuer praktisch ALLE Felder, nicht nur
+Fahrzeug-Variante):** Nutzer-Wunsch nach dem Variante-Pause-Feature:
+dieselbe Direkt-im-Browser-Klaerung auch fuer die anderen, aus keinem
+Dokument lesbaren Felder (Geburtsdatum, PLZ, bestehende Versicherung,
+Zweitwagen, ...) statt sie auf `/pruefen` abtippen zu muessen. Grosser,
+aber durchgaengiger Umbau von `fill()`:
+
+- Vier generische Generator-Helfer ergaenzt: `_boolean_oder_pausiere`
+  (Ja/Nein-Radiopaar), `_enum_oder_pausiere` (Radiogruppe mit mehreren
+  benannten Optionen), `_datum_oder_pausiere` (segmentiertes Datum),
+  `_text_oder_pausiere` (einfaches Textfeld), `_durchsuchbar_oder_pausiere`
+  (durchsuchbare Combobox). Alle nach demselben Muster: Wert bekannt ->
+  normal ausfuellen; Wert `None` -> `FeldKlaerungNoetig` yielden (pausieren,
+  Mensch traegt DIREKT im Browser ein), danach den tatsaechlichen DOM-Wert
+  zurueckliefern (nie den fall.json-Sollwert vertrauen, wenn manuell
+  geklaert wurde).
+- Neu live klaerbar (siehe `LIVE_KLAERBARE_FELDER`-Konstante in
+  portals/durchblicker.py): `fahrzeug.erstbesitzer`,
+  `fahrzeug.erstzulassung_pkw`/`erstzulassung_auf_sie`,
+  `fahrzeug.treibstoff`/`motorleistung_kw`/`bauart`/`tueren`/`variante`
+  (Kaskade, war schon vorher pausierbar), `versicherungsnehmer.
+  bestehende_versicherung`/`zweitwagen`/`anmeldung_als`/
+  `firmenbucheintrag`/`geburtsdatum`/`plz`/`email`, `produkt.
+  kasko_zusatzdeckung`/`kaskovariante`.
+- **Bewusst NICHT live klaerbar** (bleiben vorab pflichtzuklaeren, siehe
+  `unterstuetzter_pfad`): `fahrzeug.zugelassen` (nur Ja live erkundet --
+  ein Live-Klick auf 'Nein' wuerde in unerkundetes Terrain fuehren, das
+  fill() nicht weiter ausfuellen kann), `fahrzeug.finanzierung` (nur
+  'Nein' erkundet), `fahrzeug.identifikationsmethode`/`marke`/`modell`
+  (steuern, welcher GESAMTE Schritt-1-Zweig ueberhaupt geladen wird --
+  koennen strukturell nicht unklar sein, wenn identifikationsmethode
+  schon feststeht, siehe Kommentar an der Konstante).
+- **Verzweigung folgt jetzt dem TATSAECHLICH beobachteten Wert, nicht dem
+  fall.json-Sollwert:** z.B. ob 'Erstzulassung auf Sie' ueberhaupt
+  erscheint haengt von der (evtl. live geklaerten) Erstbesitzer-Antwort
+  ab, ob 'Firmenbucheintrag' erscheint von der (evtl. live geklaerten)
+  Anmeldung-als-Antwort. Wichtig, weil der Mensch bei einer Pause anders
+  entscheiden kann als im Dokument angenommen.
+- Neue Funktion `bereit_zum_ausfuellen(bericht, portal)` in fill.py:
+  ersetzt den bisherigen strikten `bericht["ok"]`-Gate vor dem Start.
+  Schema-/Plausibilitaetsfehler blockieren weiterhin hart (echte
+  Datenfehler muessen vorab korrigiert werden); alles andere darf offen
+  bleiben, wenn der Feldpfad in `portal.LIVE_KLAERBARE_FELDER` steht.
+- `/pruefen` zeigt jetzt drei Zustaende statt zwei: gruen (versteckt, wie
+  seit dem letzten Update), rot "Klären" (muss hier korrigiert werden --
+  Schema-/Plausibilitaetsfehler oder ein NICHT live klaerbares Feld), und
+  neu gelb "Im Browser eintragen" (rein informativ, kein Eingabefeld --
+  wird beim Ausfuellen automatisch abgefragt).
+- End-to-end getestet mit einer Kaskade aus 10 aufeinanderfolgenden
+  Pausen in einem einzigen Lauf (Nationalcode-Pfad, praktisch alle
+  Kundenfelder unklar: Erstbesitzer, Erstzulassung auf Sie, Bestehende
+  Versicherung, Zweitwagen, Kaskovariante, Anmeldung als, Firmenbuch-
+  eintrag, Geburtsdatum, PLZ, E-Mail) -- jede Pause per unabhaengiger
+  CDP-Verbindung (simulierter Mensch) beantwortet, jeweils von einem
+  NEUEN Thread fortgesetzt (simuliert einen neuen Flask-Request). Alle
+  18 Felder verifiziert, inklusive korrekter Verzweigung (Erstbesitzer
+  live auf 'Nein' gesetzt -> Erstzulassung-auf-Sie-Pause erscheint wie
+  erwartet; Anmeldung live auf 'Einzelunternehmen' gesetzt ->
+  Firmenbucheintrag-Pause erscheint wie erwartet). Vollautomatischer Pfad
+  (Peugeot-Testfall ohne jede Pause) separat nachgetestet, weiterhin
+  unveraendert korrekt. `/pruefen`- und `/bestaetigen`-Routen live gegen
+  echten Flask-Testclient verifiziert (Drei-Stufen-Anzeige, Start trotz
+  vieler unklarer Felder, Plausibilitaetsfehler blockiert weiterhin).
+
 **Update Phase 4 (fill.py, live end-to-end getestet, siehe portals/durchblicker.py):**
 - Tippen-zum-Filtern in durchsuchbaren Comboboxen (Baujahr, Bestehende
   Versicherung) live verifiziert -- funktioniert zuverlaessig, auch fuer

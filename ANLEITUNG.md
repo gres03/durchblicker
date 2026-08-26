@@ -40,35 +40,41 @@ Zulassungsschein UND ein Kundenformular mit den persönlichen Angaben. Dann
 werden beide Dokumente kombiniert ausgelesen und deutlich weniger Felder
 bleiben unklar.
 
-### Schritt 2: Nur bei Unklarheiten kurz prüfen
+### Schritt 2: Nur bei echten Unklarheiten kurz prüfen
 
-Du siehst eine Tabelle mit allen erkannten Daten. Ist alles eindeutig,
-steht überall "OK" — dann direkt auf "Bestätigen & ausfüllen" klicken.
+Du siehst eine Tabelle mit allen erkannten Daten. Nur zwei Arten von
+Zeilen werden überhaupt angezeigt:
 
-Ist etwas **rot** markiert (z.B. weil ein Feld auf dem Foto unscharf war),
-siehst du direkt daneben ein Eingabefeld: entweder den richtigen Wert
-eintragen, oder leer lassen, um den vorgeschlagenen Wert zu übernehmen.
-Danach "Korrekturen speichern" — nur bei echten Unklarheiten wird
-nachgefragt, nie bei klaren Fällen.
+- **Rot ("Klären"):** hier stimmt etwas nicht oder ist widersprüchlich
+  (z.B. ein unscharfes Foto). Direkt daneben ein Eingabefeld: entweder den
+  richtigen Wert eintragen, oder leer lassen, um den vorgeschlagenen Wert
+  zu übernehmen. Diese Zeilen musst du hier korrigieren, bevor es
+  weitergeht.
+- **Gelb ("Im Browser eintragen"):** diese Angabe steht in keinem
+  hochgeladenen Dokument (z.B. Geburtsdatum, wenn nur ein Zulassungsschein
+  hochgeladen wurde). **Hier musst du nichts eintragen** — die
+  Automatisierung fragt das später direkt im durchblicker-Formular ab,
+  siehe Schritt 3.
 
-### Schritt 3: Automatisch ausfüllen
+Sind nur gelbe (oder gar keine) Zeilen da, direkt auf "Bestätigen &
+ausfüllen" klicken.
 
-Ein Browserfenster öffnet sich von selbst und trägt alle Daten Schritt für
-Schritt in den durchblicker.at-Rechner ein. Die Web-Seite zeigt danach eine
-Tabelle: Soll-Wert vs. tatsächlich eingetragener Wert. Steht überall "OK",
-ist alles korrekt eingetragen.
+### Schritt 3: Automatisch ausfüllen — mit kurzen Pausen für dich
 
-### Falls die Automatisierung kurz Ihre Hilfe braucht
+Ein Browserfenster öffnet sich von selbst und trägt alle bekannten Daten
+Schritt für Schritt in den durchblicker.at-Rechner ein.
 
-Bei manchen Autos (v.a. wenn kein Nationalcode im Dokument steht) kann sich
-die Automatisierung bei der genauen Fahrzeug-Ausstattung nicht sicher
-entscheiden — z.B. wenn mehrere passende Fahrzeugtypen gefunden werden.
-In diesem Fall siehst du eine Seite "Kurz Ihre Hilfe nötig": klicke einfach
-im **bereits geöffneten Browserfenster** selbst die richtige Option an
-(die zur Auswahl stehenden Optionen werden dir angezeigt), und klicke dann
-auf der Web-Seite auf "Automatisierung fortsetzen" — die Automatisierung
-trägt danach automatisch den Rest ein, ohne dass du irgendetwas erneut
-eingeben musst.
+Bei jeder Angabe, die in keinem Dokument stand (siehe die gelben Zeilen
+aus Schritt 2), **hält die Automatisierung kurz an**: du siehst eine Seite
+"Kurz Ihre Hilfe nötig" mit dem betreffenden Feld. Trag den Wert (oder
+klicke die Option) **direkt im bereits geöffneten Browserfenster** ein —
+genauso, wie du es sonst auch von Hand machen würdest — und klicke dann
+auf der Web-Seite auf "Automatisierung fortsetzen". Die Automatisierung
+übernimmt danach automatisch wieder, bis zur nächsten Pause oder bis alles
+fertig ist. Kein Abtippen in ein Zwischenformular nötig.
+
+Am Ende zeigt die Web-Seite eine Tabelle: Soll-Wert vs. tatsächlich
+eingetragener Wert. Steht überall "OK", ist alles korrekt eingetragen.
 
 ### Zum Schluss: Selbst prüfen und abschließen
 

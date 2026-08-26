@@ -40,12 +40,18 @@ nie geklickt, siehe unten).
 
 **Web-Oberflaeche** (empfohlener Weg, siehe `ANLEITUNG.md`): `python app.py`
 (oder `Webapp_starten.bat`/`webapp_starten.sh`) startet einen lokalen Server
-und oeffnet automatisch den Browser. Dokument hochladen -> automatische
-Erkennung ueber die Gemini-API (kostenloses Kontingent, `GEMINI_API_KEY` in
-`.env`) -> nur bei echtem Klaerungsbedarf ein kurzes Formular -> Ausfuellen
-+ Verifikation im geoeffneten Browserfenster. `extract.py` kapselt den
-Gemini-Aufruf; wirft `ExtraktionsFehler` mit Klartext-Meldung statt zu
-raten, wenn kein Key gesetzt ist oder die Antwort kein gueltiges JSON war.
+und oeffnet automatisch den Browser. Ein oder mehrere Dokumente hochladen
+(z.B. Zulassungsschein UND Kundenformular gleichzeitig -- Gemini kombiniert
+die Angaben aus allen zu einem Fall) -> automatische Erkennung ueber die
+Gemini-API (kostenloses Kontingent, `GEMINI_API_KEY` in `.env`) -> nur bei
+echtem Klaerungsbedarf ein kurzes Formular -> Ausfuellen + Verifikation im
+geoeffneten Browserfenster. `extract.py` kapselt den Gemini-Aufruf; wirft
+`ExtraktionsFehler` mit Klartext-Meldung statt zu raten, wenn kein Key
+gesetzt ist oder die Antwort kein gueltiges JSON war. Ein Zulassungsschein
+allein enthaelt keine Kundenangaben (Geburtsdatum, PLZ, bestehende
+Versicherung, ...) -- diese Felder bleiben dann unvermeidbar klaerungs-
+beduerftig, nicht weil die Erkennung schlecht ist, sondern weil die Daten
+schlicht nicht im Dokument stehen.
 
 **Kommandozeile** (kein Gemini-Key noetig, Dokumentenerkennung manuell ueber
 claude.ai -- siehe `extraktion_anfrage.txt`): Rohdaten (Struktur wie

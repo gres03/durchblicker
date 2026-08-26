@@ -25,10 +25,17 @@ load_dotenv(BASE_DIR / ".env")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
 
 EXTRAKTIONS_PROMPT = """\
-Lies das angehängte Dokument (Zulassungsschein, Versicherungsangebot,
-Kundenformular o.ä.) und extrahiere daraus die Daten für eine
-KFZ-Versicherung. Gib NUR ein einziges JSON-Objekt zurück, exakt in
-dieser Struktur:
+Lies die angehängten Dokumente (Zulassungsschein, Versicherungsangebot,
+Kundenformular o.ä. -- es kann eines oder mehrere sein, z.B. Zulassungsschein
+UND separates Kundenformular zum selben Fall) und extrahiere daraus die
+Daten für eine KFZ-Versicherung. Kombiniere Informationen aus ALLEN
+angehängten Dokumenten zu einem einzigen Ergebnis -- steht z.B. das
+Baujahr nur im Zulassungsschein und das Geburtsdatum nur im
+Kundenformular, nimm beide Werte aus dem jeweiligen Dokument. Widerspricht
+sich ein Feld zwischen zwei Dokumenten (z.B. unterschiedliche PLZ), setze
+"sicher": false und beschreibe den Widerspruch in "quelle" statt zu raten,
+welches Dokument recht hat. Gib NUR ein einziges JSON-Objekt zurück, exakt
+in dieser Struktur:
 
 {
   "fahrzeug": {
@@ -120,12 +127,14 @@ class ExtraktionsFehler(Exception):
     pass
 
 
-def extrahiere(dateipfad):
-    """Schickt ein Dokument (Bild oder PDF) an Gemini und liefert die
-    extrahierten Rohdaten als dict (Struktur wie oben). Wirft
-    ExtraktionsFehler mit Klartext-Meldung bei fehlendem API-Key oder
-    einer Antwort, die kein gueltiges JSON ist -- rate niemals selbst,
-    wenn die KI keine brauchbare Antwort liefert."""
+def extrahiere(dateipfade):
+    """Schickt eines oder mehrere Dokumente (Bild/PDF) an Gemini und
+    liefert die extrahierten Rohdaten als dict (Struktur wie oben, ueber
+    alle Dokumente kombiniert). Nimmt einen einzelnen Pfad ODER eine
+    Liste von Pfaden entgegen. Wirft ExtraktionsFehler mit Klartext-
+    Meldung bei fehlendem API-Key oder einer Antwort, die kein gueltiges
+    JSON ist -- rate niemals selbst, wenn die KI keine brauchbare
+    Antwort liefert."""
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise ExtraktionsFehler(
@@ -137,21 +146,23 @@ def extrahiere(dateipfad):
     from google import genai
     from google.genai import types
 
-    dateipfad = Path(dateipfad)
-    mime_type, _ = mimetypes.guess_type(str(dateipfad))
-    if not mime_type:
-        raise ExtraktionsFehler(f"Dateityp von {dateipfad.name} nicht erkannt (erwartet Bild oder PDF).")
+    if isinstance(dateipfade, (str, Path)):
+        dateipfade = [dateipfade]
+
+    contents = [EXTRAKTIONS_PROMPT]
+    for dateipfad in dateipfade:
+        dateipfad = Path(dateipfad)
+        mime_type, _ = mimetypes.guess_type(str(dateipfad))
+        if not mime_type:
+            raise ExtraktionsFehler(f"Dateityp von {dateipfad.name} nicht erkannt (erwartet Bild oder PDF).")
+        contents.append(types.Part.from_bytes(data=dateipfad.read_bytes(), mime_type=mime_type))
 
     client = genai.Client(api_key=api_key)
-    dokument_bytes = dateipfad.read_bytes()
 
     try:
         antwort = client.models.generate_content(
             model=GEMINI_MODEL,
-            contents=[
-                EXTRAKTIONS_PROMPT,
-                types.Part.from_bytes(data=dokument_bytes, mime_type=mime_type),
-            ],
+            contents=contents,
             config=types.GenerateContentConfig(response_mime_type="application/json"),
         )
     except Exception as e:

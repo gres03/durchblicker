@@ -171,6 +171,25 @@ Automatisierung automatisch den Rest. Grundlegend groesserer Umbau:
   75 S&S". Der vollautomatische Pfad (kein Pausieren noetig) separat
   nachgetestet und weiterhin unveraendert korrekt.
 
+**Update 2026-08-26 (mehrere Dokumente gleichzeitig hochladbar):**
+Nutzer-Feedback: bei nur einem hochgeladenen Zulassungsschein bleiben
+viele Felder rot (Geburtsdatum, PLZ, bestehende Versicherung, ...) --
+zurecht, denn diese Kundenangaben stehen auf einem Zulassungsschein
+schlicht nicht drauf (kein Erkennungsfehler, sondern eine echte Grenze).
+Fix: Upload-Seite erlaubt jetzt mehrere Dateien gleichzeitig (`multiple`
+am `<input type=file>`, `request.files.getlist("dokument")` in app.py).
+`extract.py`'s `extrahiere()` nimmt jetzt einen einzelnen Pfad ODER eine
+Liste von Pfaden entgegen und schickt alle Dokumente in EINEM Gemini-
+Aufruf (`contents=[PROMPT, Part1, Part2, ...]`) -- der Prompt weist
+Gemini an, Angaben aus allen Dokumenten zu einem Fall zu kombinieren und
+bei Widerspruechen zwischen den Dokumenten `sicher:false` zu setzen statt
+zu raten, welches Dokument recht hat. Live end-to-end getestet: ein
+Text-"Zulassungsschein" (Nationalcode, Erstzulassung, Erstbesitzer) und
+ein Text-"Kundenformular" (Geburtsdatum, PLZ, E-Mail, bestehende
+Versicherung, Zweitwagen, Bonus-Malus-Stufe) zusammen hochgeladen --
+Ergebnis nach `mapping.py`/`validate.py`: `ok: true, klaerungsbedarf: 0`,
+alle 28 Felder automatisch bestaetigt, keine einzige Nachfrage noetig.
+
 **Update Phase 4 (fill.py, live end-to-end getestet, siehe portals/durchblicker.py):**
 - Tippen-zum-Filtern in durchsuchbaren Comboboxen (Baujahr, Bestehende
   Versicherung) live verifiziert -- funktioniert zuverlaessig, auch fuer

@@ -2,11 +2,17 @@
 {% block titel %}Dokument hochladen — durchblicker-automation{% endblock %}
 {% block schritt %}Schritt 1 von 3{% endblock %}
 {% block inhalt %}
-  <h1>Kundendokument hochladen</h1>
+  <h1>Kundendokument(e) hochladen</h1>
   <p class="hinweis">
     Zulassungsschein, Versicherungsangebot oder Kundenformular als Foto
     oder PDF. Die Daten werden automatisch ausgelesen — unklare Angaben
     werden im nächsten Schritt zur Kontrolle vorgelegt, nie geraten.
+  </p>
+  <p class="hinweis">
+    <strong>Tipp:</strong> Ein Zulassungsschein allein enthält keine
+    Kundenangaben (Geburtsdatum, PLZ, bestehende Versicherung, ...) — lade
+    zusätzlich ein Kundenformular mit hoch (mehrere Dateien auswählen oder
+    per Drag &amp; Drop), dann bleiben deutlich weniger Felder unklar.
   </p>
 
   {% if fehler %}
@@ -24,9 +30,9 @@
         <path d="M12 3v12m0-12 4 4m-4-4-4 4" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      <div id="ablage-text" style="font-weight: 600;">Datei hierher ziehen oder klicken zum Auswählen</div>
-      <div class="hinweis" style="margin-top:0.25rem;">JPG, PNG oder PDF</div>
-      <input id="dokument-eingabe" type="file" name="dokument" accept=".jpg,.jpeg,.png,.pdf" required
+      <div id="ablage-text" style="font-weight: 600;">Datei(en) hierher ziehen oder klicken zum Auswählen</div>
+      <div class="hinweis" style="margin-top:0.25rem;">JPG, PNG oder PDF — auch mehrere auf einmal möglich</div>
+      <input id="dokument-eingabe" type="file" name="dokument" accept=".jpg,.jpeg,.png,.pdf" multiple required
              style="position:absolute; width:1px; height:1px; opacity:0; overflow:hidden;">
     </label>
 
@@ -37,9 +43,11 @@
     const eingabe = document.getElementById('dokument-eingabe');
     const zone = document.getElementById('ablagezone');
     const text = document.getElementById('ablage-text');
-    eingabe.addEventListener('change', () => {
-      if (eingabe.files.length) text.textContent = eingabe.files[0].name;
-    });
+    function zeigeDateien(dateien) {
+      if (!dateien.length) return;
+      text.textContent = Array.from(dateien).map(d => d.name).join(', ');
+    }
+    eingabe.addEventListener('change', () => zeigeDateien(eingabe.files));
     ['dragover', 'dragleave', 'drop'].forEach(ereignis => {
       zone.addEventListener(ereignis, e => e.preventDefault());
     });
@@ -49,7 +57,7 @@
       zone.style.borderColor = '';
       if (e.dataTransfer.files.length) {
         eingabe.files = e.dataTransfer.files;
-        text.textContent = e.dataTransfer.files[0].name;
+        zeigeDateien(e.dataTransfer.files);
       }
     });
   </script>

@@ -116,15 +116,18 @@ def start():
 
 @app.route("/hochladen", methods=["POST"])
 def hochladen():
-    datei = request.files.get("dokument")
-    if not datei or datei.filename == "":
-        return render_template("upload.html", fehler="Bitte eine Datei auswaehlen.")
+    dateien = [d for d in request.files.getlist("dokument") if d and d.filename]
+    if not dateien:
+        return render_template("upload.html", fehler="Bitte mindestens eine Datei auswaehlen.")
 
-    ziel = UPLOAD_DIR / datei.filename
-    datei.save(ziel)
+    ziele = []
+    for i, datei in enumerate(dateien):
+        ziel = UPLOAD_DIR / f"{i}_{datei.filename}"
+        datei.save(ziel)
+        ziele.append(ziel)
 
     try:
-        rohdaten = extrahiere(ziel)
+        rohdaten = extrahiere(ziele)
     except ExtraktionsFehler as e:
         return render_template("upload.html", fehler=str(e))
     except Exception as e:

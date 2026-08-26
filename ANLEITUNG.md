@@ -26,11 +26,19 @@ Ein schwarzes Fenster öffnet sich kurz, dann öffnet sich automatisch dein
 Browser mit der Programm-Oberfläche. Das schwarze Fenster einfach offen
 lassen, solange du arbeitest.
 
-### Schritt 1: Dokument hochladen
+### Schritt 1: Dokument(e) hochladen
 
-Foto oder PDF vom Zulassungsschein/Kundenformular auf die Fläche ziehen
-(oder anklicken zum Auswählen) und auf "Automatisch auslesen" klicken.
-Die Daten werden automatisch ausgelesen — das dauert ein paar Sekunden.
+Foto(s) oder PDF(s) auf die Fläche ziehen (oder anklicken zum Auswählen)
+und auf "Automatisch auslesen" klicken. Die Daten werden automatisch
+ausgelesen — das dauert ein paar Sekunden.
+
+**Wichtig:** Ein Zulassungsschein allein enthält nur Fahrzeugdaten, keine
+Kundenangaben wie Geburtsdatum, Adresse oder bestehende Versicherung — die
+stehen dort schlicht nicht drauf. Lade daher am besten **gleich zwei
+Dateien auf einmal hoch** (mehrere Dateien auswählen oder per Drag & Drop):
+Zulassungsschein UND ein Kundenformular mit den persönlichen Angaben. Dann
+werden beide Dokumente kombiniert ausgelesen und deutlich weniger Felder
+bleiben unklar.
 
 ### Schritt 2: Nur bei Unklarheiten kurz prüfen
 

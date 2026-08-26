@@ -37,6 +37,10 @@ ERLAUBTE_WERTE = {
     ],
     "bonus_malus_stufe": ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9 - Einsteigerstufe"],
     "kaskovariante": ["Vollkasko", "Teilkasko"],
+    "bauart": [
+        "Limousine/Sedan", "Kombi - PKW", "SUV", "Coupé", "Cabrio/Cabriolet",
+        "MPV", "Kombi Transporter", "Bus",
+    ],
 }
 
 # Felder mit vollstaendig bekanntem Katalog (ERLAUBTE_WERTE greift als
@@ -50,7 +54,7 @@ FREITEXT_FELDER_MIT_SYNONYMEN = {"bestehende_versicherung", "nationalitaet"}
 
 BOOLEAN_FELDER = {"zugelassen", "erstbesitzer", "zweitwagen", "kasko_zusatzdeckung", "firmenbucheintrag"}
 
-FAHRZEUG_FELDER = {"finanzierung", "zugelassen", "erstbesitzer"}
+FAHRZEUG_FELDER = {"finanzierung", "zugelassen", "erstbesitzer", "bauart"}
 VERSICHERUNGSNEHMER_FELDER = {
     "bonus_malus_stufe", "bestehende_versicherung", "nationalitaet", "zweitwagen",
     "anmeldung_als", "firmenbucheintrag",

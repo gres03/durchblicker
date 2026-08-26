@@ -56,6 +56,26 @@ ausgewaehlt werden muss. Deutlich aufwaendiger als der Nationalcode-Weg:
   Benzin, 55 kW, Bauart/Tueren automatisch aufgeloest, Variante "208 Like
   PureTech 75 S&S" unter 3 Ergebniszeilen eindeutig getroffen -- alle 22
   Felder verifiziert.
+- **Bug gefunden + gefixt (echter Nutzerfall, 2026-08-26):** Bauart-Feld
+  "Schräghecklimousine" (Karosserie-Fachbegriff aus einem echten Dokument)
+  fand keinen Treffer -- `Ausfuellen abgebrochen: Kein Treffer fuer
+  'Bauart' = 'Schräghecklimousine' unter den verfuegbaren Optionen
+  gefunden.` Anders als beim Marke-Bug (siehe oben) ist das KEIN
+  Gross-/Kleinschreibungsproblem, sondern ein Vokabular-Problem: das
+  Formular kennt nur eine feste, kleine Kategorienliste, live verifiziert
+  ueber mehrere Marken/Modelle (VW Golf, Skoda Octavia, Ford Focus/Mustang,
+  VW Tiguan, Fiat Ducato, Renault Espace, Dacia Duster): "Limousine/Sedan",
+  "Kombi - PKW", "SUV", "Coupé", "Cabrio/Cabriolet", "MPV", "Kombi
+  Transporter", "Bus". Fix: `bauart` ist jetzt in `mapping.py` ein
+  Enum-Feld (`ERLAUBTE_WERTE`) mit eigener Synonymtabelle in
+  `synonyme.json` (z.B. "schräghecklimousine"/"fließheck"/"steilheck"
+  -> "Limousine/Sedan", "kombi"/"break"/"avant" -> "Kombi - PKW",
+  "geländewagen" -> "SUV", ...) -- unbekannte Begriffe bleiben weiterhin
+  `sicher:false` statt geraten zu werden. `extract.py`/
+  `extraktion_anfrage.txt` nennen der Dokumentenerkennung jetzt zusaetzlich
+  alle acht Kategorien direkt. End-to-end nachgetestet: VW Golf, Diesel,
+  85 kW, Bauart-Rohtext "Schräghecklimousine" -> korrekt zu "Limousine/
+  Sedan" uebersetzt und ausgewaehlt -- alle 22 Felder verifiziert.
 
 **Update Phase 4 (fill.py, live end-to-end getestet, siehe portals/durchblicker.py):**
 - Tippen-zum-Filtern in durchsuchbaren Comboboxen (Baujahr, Bestehende

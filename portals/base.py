@@ -44,15 +44,24 @@ class KfzPortal(ABC):
 
     @abstractmethod
     def fill(self, page, fall):
-        """Fuellt den Wizard Schritt fuer Schritt anhand von fall.json aus.
-        Nutzt Playwright-Auto-Waiting, kein time.sleep(). Klickt NIE auf
-        den Abschluss-/'Zum Ergebnis'-Button.
+        """Generator: fuellt den Wizard Schritt fuer Schritt anhand von
+        fall.json aus. Nutzt Playwright-Auto-Waiting, kein time.sleep().
+        Klickt NIE auf den Abschluss-/'Zum Ergebnis'-Button.
 
         Da es sich um eine Single-Page-App handelt, existieren die
         DOM-Elemente eines Schritts nach 'Weiter' nicht mehr -- Implementierungen
         MUESSEN daher jeden Schritt SOFORT nach dem Ausfuellen (vor dem
         Klick auf 'Weiter') verifizieren und das Ergebnis intern sammeln,
-        damit verify() es danach zurueckgeben kann."""
+        damit verify() es danach zurueckgeben kann.
+
+        Kann eine einzelne Auswahl nicht automatisch getroffen werden,
+        'yielded' die Implementierung eine FeldKlaerungNoetig statt
+        abzubrechen -- der Aufrufer haelt die Playwright-Sitzung an
+        genau dieser Stelle an, ein Mensch trifft die Auswahl DIREKT im
+        bereits geoeffneten Browserfenster, und der Aufrufer ruft
+        next()/send() erneut auf, um fortzusetzen (aktion() wird dabei
+        NICHT erneut versucht). Laeuft der Generator vollstaendig durch
+        (StopIteration), ist das Ausfuellen fertig."""
 
     @abstractmethod
     def verify(self, page, fall):

@@ -21,7 +21,7 @@ from flask import Flask, redirect, render_template, request, url_for
 from confirm import resolve_wert_schema, sammle_gruende
 from extract import ExtraktionsFehler, extrahiere
 from feldbezeichnungen import label
-from fill import fuelle_fuer_webapp
+from fill import FuellSitzung
 from mapping import map_fall
 from validate import alle_felder, lade_schema, validiere
 
@@ -32,6 +32,13 @@ FALL_PFAD = UPLOAD_DIR / "aktueller_fall.json"
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # 20 MB, grosszuegig fuer Fotos/gescannte PDFs
+
+# Genau eine laufende Ausfuell-Sitzung gleichzeitig -- passt zum Rest der
+# App (ein gemeinsames aktueller_fall.json, keine Mehrbenutzer-Trennung).
+# Der Worker-Thread der Sitzung haelt Playwright am Leben, waehrend
+# mehrere Flask-Requests (jeweils eigene Threads) nacheinander mit ihm
+# kommunizieren -- siehe FuellSitzung-Docstring in fill.py.
+_SITZUNG = None
 
 
 def lade_fall():
@@ -215,32 +222,39 @@ def bestaetigen():
     if not bericht["ok"]:
         return redirect(url_for("pruefen"))
 
-    try:
-        zeilen, fehlermeldung, klaerung = fuelle_fuer_webapp(FALL_PFAD)
-    except ValueError as e:
-        return render_template("ergebnis.html", zeilen=[], fehlermeldung=str(e))
+    global _SITZUNG
+    _SITZUNG = FuellSitzung()
+    status, daten = _SITZUNG.starte(FALL_PFAD)
+    return _verarbeite_sitzungsstatus(status, daten)
 
-    if klaerung:
-        # Fehler laesst sich auf genau ein Feld zurueckfuehren (z.B.
-        # mehrdeutige Fahrzeug-Variante) -- Feld erneut zur Klaerung
-        # oeffnen statt in einer Sackgasse zu enden. Das schon geoeffnete
-        # Browserfenster vom fehlgeschlagenen Versuch bleibt bewusst
-        # offen (siehe fuelle_fuer_webapp) und wird bei einem erneuten
-        # Bestaetigen-Klick durch ein neues ersetzt.
-        fall = lade_fall()
-        optionen_text = ", ".join(f"'{o}'" for o in klaerung["optionen"]) if klaerung["optionen"] else "keine"
-        _set_feld(fall, klaerung["feldpfad"], {
-            "wert": None,
-            "quelle": f"Automatische Auswahl nicht eindeutig -- bitte GENAU einen dieser "
-                      f"Formular-Werte eintragen: {optionen_text}",
-            "sicher": False,
-        })
-        speichere_fall(fall)
+
+@app.route("/weiter_automatisieren", methods=["POST"])
+def weiter_automatisieren():
+    """Wird geklickt, NACHDEM der Nutzer die zuvor angezeigte Auswahl
+    (siehe klaerung_manuell.html) direkt im geoeffneten Browserfenster
+    von Hand getroffen hat -- setzt genau denselben Ausfuell-Lauf fort,
+    OHNE das bereits Ausgefuellte zu wiederholen."""
+    if _SITZUNG is None:
         return redirect(url_for("pruefen"))
+    status, daten = _SITZUNG.fortsetzen()
+    return _verarbeite_sitzungsstatus(status, daten)
 
-    for z in zeilen:
-        z["label"] = label(z["pfad"])
-    return render_template("ergebnis.html", zeilen=zeilen, fehlermeldung=fehlermeldung)
+
+def _verarbeite_sitzungsstatus(status, daten):
+    if status == "fertig":
+        for z in daten:
+            z["label"] = label(z["pfad"])
+        return render_template("ergebnis.html", zeilen=daten, fehlermeldung=None)
+
+    if status == "klaerung":
+        return render_template(
+            "klaerung_manuell.html",
+            feld_label=label(daten["feldpfad"]),
+            optionen=daten["optionen"],
+        )
+
+    # status == "fehler"
+    return render_template("ergebnis.html", zeilen=[], fehlermeldung=daten)
 
 
 def _oeffne_browser():

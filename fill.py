@@ -5,6 +5,13 @@ sendet nichts ab. Der Browser bleibt am Ende offen, damit das Ergebnis
 selbst geprueft werden kann -- das Skript beendet sich nicht von selbst,
 sondern wartet auf Enter.
 
+Kann eine einzelne Auswahl in der 'Marke und Modell'-Kaskade nicht
+automatisch getroffen werden (FeldKlaerungNoetig, siehe portals/base.py),
+pausiert das Ausfuellen an genau dieser Stelle -- der Mensch trifft die
+Auswahl DIREKT im bereits geoeffneten Browserfenster, danach macht die
+Automatisierung automatisch mit dem Rest weiter (CLI: Enter druecken;
+Web-Oberflaeche: siehe FuellSitzung/app.py).
+
 Voraussetzungen (werden hart erzwungen, kein Flag zum Ueberspringen):
   1. fall.json muss validate.py OHNE Beanstandung durchlaufen (Schema,
      Klaerungsbedarf, Plausibilitaet) -- d.h. confirm.py muss vorher
@@ -18,7 +25,9 @@ Verwendung:
 """
 
 import json
+import queue
 import sys
+import threading
 from pathlib import Path
 
 from colorama import Fore, Style, init as colorama_init
@@ -83,42 +92,74 @@ def _lade_und_pruefe_fall(fall_pfad):
     return fall, portal
 
 
-def fuelle_fuer_webapp(fall_pfad):
-    """Wie fuelle_aus, aber ohne input()-Blockade und ohne den Browser am
-    Ende zu schliessen -- fuer app.py, wo der Nutzer den Browser selbst
-    ansieht/schliesst statt eine Terminal-Eingabe zu machen. Playwright
-    wird bewusst NICHT ueber einen 'with'-Block verwaltet, damit der
-    Browser nach Rueckkehr dieser Funktion offen bleibt. Liefert
-    (zeilen, fehler_meldung_oder_None, klaerung_or_None) -- klaerung ist
-    ein {"feldpfad", "optionen"}-Dict, wenn der Fehler auf genau ein
-    fall.json-Feld zurueckzufuehren und daher ueber /pruefen erneut
-    klaerbar ist (FeldKlaerungNoetig), sonst None (echte Sackgasse)."""
-    fall, portal = _lade_und_pruefe_fall(fall_pfad)
+class FuellSitzung:
+    """Treibt portal.fill() (ein Generator, siehe portals/base.py) fuer
+    die Web-Oberflaeche in einem EIGENEN, langlebigen Worker-Thread an --
+    NICHT im jeweiligen Flask-Request-Thread. Grund (live verifiziert
+    2026-08-26): Playwrights Sync API bindet eine Seite/einen Browser an
+    das Greenlet-Dispatching des Threads, der sync_playwright().start()
+    aufgerufen hat. Flasks threaded=True startet fuer JEDEN Request einen
+    NEUEN Thread -- versucht ein spaeterer Request, dieselbe Seite
+    anzufassen, wirft Playwright 'cannot switch to a different thread
+    (which happens to have exited)'. Die Loesung: der Worker-Thread lebt
+    ueber mehrere Requests hinweg weiter und wartet bei einer Pause auf
+    einem threading.Event, statt dass ein neuer Thread die Seite anfasst.
+    Kommunikation ausschliesslich ueber thread-sichere Queue/Event, nie
+    ueber direkten Zugriff auf page/browser von aussen."""
 
-    playwright = sync_playwright().start()
-    browser = playwright.chromium.launch(headless=False)
-    if STATE_FILE.exists():
-        context = browser.new_context(storage_state=str(STATE_FILE))
-    else:
-        context = browser.new_context()
-    page = context.new_page()
+    def __init__(self):
+        self._status_queue = queue.Queue()
+        self._fortsetzen_event = threading.Event()
+        self._thread = None
 
-    try:
-        portal.navigate(page)
-        portal.fill(page, fall)
-    except FeldKlaerungNoetig as e:
-        dump_fehler(page, "fill_fehler", f"Ausfuellen abgebrochen: {e}")
-        return (
-            [],
-            f"Ausfuellen abgebrochen: {e} (Browser bleibt zur Fehlersuche offen)",
-            {"feldpfad": e.feldpfad, "optionen": e.optionen},
-        )
-    except Exception as e:
-        dump_fehler(page, "fill_fehler", f"Ausfuellen abgebrochen: {e}")
-        return [], f"Ausfuellen abgebrochen: {e} (Browser bleibt zur Fehlersuche offen)", None
+    def starte(self, fall_pfad):
+        self._thread = threading.Thread(target=self._laufen, args=(fall_pfad,), daemon=True)
+        self._thread.start()
+        return self._status_queue.get()
 
-    zeilen = portal.verify(page, fall)
-    return zeilen, None, None
+    def fortsetzen(self):
+        """Vom Mensch direkt im Browser erledigt -- Worker-Thread fortsetzen."""
+        self._fortsetzen_event.set()
+        return self._status_queue.get()
+
+    def _laufen(self, fall_pfad):
+        try:
+            fall, portal = _lade_und_pruefe_fall(fall_pfad)
+        except ValueError as e:
+            self._status_queue.put(("fehler", str(e)))
+            return
+
+        playwright = sync_playwright().start()
+        browser = playwright.chromium.launch(headless=False)
+        if STATE_FILE.exists():
+            context = browser.new_context(storage_state=str(STATE_FILE))
+        else:
+            context = browser.new_context()
+        page = context.new_page()
+
+        try:
+            portal.navigate(page)
+            gen = portal.fill(page, fall)
+            while True:
+                try:
+                    klaerung = next(gen)
+                except StopIteration:
+                    break
+                self._status_queue.put((
+                    "klaerung",
+                    {"feldpfad": klaerung.feldpfad, "optionen": klaerung.optionen, "meldung": str(klaerung)},
+                ))
+                self._fortsetzen_event.wait()
+                self._fortsetzen_event.clear()
+        except Exception as e:
+            dump_fehler(page, "fill_fehler", f"Ausfuellen abgebrochen: {e}")
+            self._status_queue.put(
+                ("fehler", f"Ausfuellen abgebrochen: {e} (Browser bleibt zur Fehlersuche offen)")
+            )
+            return
+
+        zeilen = portal.verify(page, fall)
+        self._status_queue.put(("fertig", zeilen))
 
 
 def fuelle_aus(fall_pfad):
@@ -144,7 +185,17 @@ def fuelle_aus(fall_pfad):
 
         try:
             portal.navigate(page)
-            portal.fill(page, fall)
+            gen = portal.fill(page, fall)
+            while True:
+                try:
+                    klaerung = next(gen)
+                except StopIteration:
+                    break
+                print(Fore.YELLOW + f"\nBitte im geoeffneten Browserfenster '{label(klaerung.feldpfad)}' "
+                                     "selbst auswaehlen." + Style.RESET_ALL)
+                if klaerung.optionen:
+                    print(f"Zur Auswahl stehen: {', '.join(klaerung.optionen)}")
+                input("Enter druecken, sobald im Browser erledigt...")
         except Exception as e:
             dump_fehler(page, "fill_fehler", f"Ausfuellen abgebrochen: {e}")
             input("\nBrowser bleibt offen zur Fehlersuche. Enter druecken zum Beenden...")

@@ -113,6 +113,64 @@ ausgewaehlt werden muss. Deutlich aufwaendiger als der Nationalcode-Weg:
      mit den 3 echten Kandidatennamen, zweiter Versuch mit korrekt
      eingetragenem Namen laeuft vollstaendig durch.
 
+**Update 2026-08-26 (Pause/Fortsetzen statt Retype-Schleife):** Nutzer-
+Feedback zum obigen "/pruefen erneut oeffnen"-Fix: das erneute Eintippen
+des exakten Kandidatennamens in ein Textfeld ist umstaendlich/fehleranfaellig.
+Gewuenscht: bei einer nicht automatisch aufloesbaren Auswahl DIREKT im
+bereits geoeffneten Browserfenster klicken koennen, danach uebernimmt die
+Automatisierung automatisch den Rest. Grundlegend groesserer Umbau:
+
+- `DurchblickerPortal.fill()` ist jetzt ein GENERATOR. An jeder Stelle in
+  der 'Marke und Modell'-Kaskade (Marke, Modell, Treibstoff, kW, Bauart,
+  Tueren, Variante, Bestehende Versicherung), an der bisher eine
+  `FeldKlaerungNoetig` geworfen wurde, wird sie stattdessen 'ge-yielded'
+  (`_versuche_oder_pausiere()`-Helfer) -- die Playwright-Seite bleibt an
+  genau dieser Stelle offen und unveraendert, der Aufrufer haelt an. Wird
+  der Generator spaeter fortgesetzt (`next()`), wird die fehlgeschlagene
+  Aktion NICHT wiederholt (der Mensch hat sie im Browser bereits erledigt)
+  -- der jeweils aktuelle DOM-Wert wird einfach neu ausgelesen
+  (`page.input_value()`). Verifikationszeilen fuer manuell geklaerte
+  Felder zeigen `soll: "(manuell gewählt) <Wert>"` statt eines Soll/Ist-
+  Vergleichs (`pruefe_manuell()`).
+- **Sonderfall Variante:** anders als alle anderen Kaskade-Felder loescht
+  ein Klick auf eine Ergebniszeile die komplette Radioliste aus dem DOM
+  und ersetzt sie durch eine "Gewähltes Fahrzeug:"-Bestaetigung (live
+  beobachtet -- `is_checked()` auf den (nicht mehr vorhandenen) Radios
+  schlaegt danach fehl, auch bei frischer Abfrage). Fix: der automatische
+  Erfolgsfall kennt den Zeilentext bereits vorher aus dem Rueckgabewert
+  von `_waehle_aus_ergebnisliste()`; der manuelle Fall liest ihn per
+  `_gewaehltes_fahrzeug_name()` aus der Bestaetigungs-Anzeige.
+- **Kritische Erkenntnis beim Bauen der Web-Anbindung (live verifiziert):**
+  Playwrights Sync API bindet eine Seite/einen Browser an das Greenlet-
+  Dispatching GENAU des Threads, der `sync_playwright().start()`
+  aufgerufen hat. Flasks `threaded=True` startet fuer JEDEN Request einen
+  NEUEN Thread -- ein zweiter Request, der versucht, dieselbe (bereits
+  pausierte) Seite anzufassen, wirft `playwright._impl._errors.Error:
+  cannot switch to a different thread (which happens to have exited)`.
+  Live mit einem eigenen Test bestaetigt (Thread A startet Browser+Seite,
+  beendet sich, Thread B versucht `page.title()`: exakt dieser Fehler).
+  Loesung: `fill.py`'s neue Klasse `FuellSitzung` treibt `portal.fill()`
+  in einem EIGENEN, langlebigen Worker-Thread an, der ueber mehrere
+  Flask-Requests hinweg am Leben bleibt und bei einer Pause auf einem
+  `threading.Event` wartet -- Kommunikation mit den (kurzlebigen)
+  Request-Threads ausschliesslich ueber eine thread-sichere `queue.Queue`,
+  NIE durch direkten Zugriff auf page/browser von einem anderen Thread.
+  `app.py` haelt genau eine `FuellSitzung` in einer Modulvariable
+  (`_SITZUNG`, passt zum Rest der App: ein gemeinsames aktueller_fall.json,
+  keine Mehrbenutzer-Trennung); neue Route `/weiter_automatisieren` sowie
+  Template `klaerung_manuell.html` ("Kurz Ihre Hilfe nötig").
+- End-to-end getestet mit einer echten Cross-Thread-Simulation: Worker-
+  Thread pausiert bei einer mehrdeutigen Peugeot-208-Variante; eine
+  VOELLIG unabhaengige zweite Playwright-Verbindung (per
+  `connect_over_cdp`, simuliert einen Menschen mit Maus am bereits
+  offenen Fenster) klickt die richtige Option; ein dritter, neuer Thread
+  (simuliert einen neuen Flask-Request) ruft nur `fortsetzen()` auf --
+  alle drei Threads unterschiedliche Thread-IDs, kein direkter
+  Seiten-Zugriff ausserhalb des Worker-Threads. Ergebnis: alle 22 Felder
+  verifiziert, `ist` fuer die Variante korrekt "Peugeot 208 Like PureTech
+  75 S&S". Der vollautomatische Pfad (kein Pausieren noetig) separat
+  nachgetestet und weiterhin unveraendert korrekt.
+
 **Update Phase 4 (fill.py, live end-to-end getestet, siehe portals/durchblicker.py):**
 - Tippen-zum-Filtern in durchsuchbaren Comboboxen (Baujahr, Bestehende
   Versicherung) live verifiziert -- funktioniert zuverlaessig, auch fuer

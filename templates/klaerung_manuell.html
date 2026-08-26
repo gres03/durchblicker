@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block titel %}Kurz Ihre Hilfe nötig — durchblicker-automation{% endblock %}
+{% block schritt %}Schritt 3 von 3{% endblock %}
+{% block inhalt %}
+  <h1>Kurz Ihre Hilfe nötig</h1>
+  <p class="hinweis">
+    Für <strong>{{ feld_label }}</strong> konnte die Automatisierung sich nicht sicher
+    entscheiden. Bitte im bereits geöffneten Browserfenster die passende Option selbst
+    anklicken{% if optionen %}
+    — zur Auswahl stehen:
+    {% for o in optionen %}<span class="abzeichen klaeren">{{ o }}</span>{% if not loop.last %} {% endif %}{% endfor %}
+    {% endif %}.
+  </p>
+  <p class="hinweis">
+    Sobald Sie das im Browser erledigt haben, hier weiterklicken — die
+    Automatisierung übernimmt danach automatisch wieder und füllt den Rest aus.
+  </p>
+  <form method="post" action="{{ url_for('weiter_automatisieren') }}">
+    <button class="knopf" type="submit">Automatisierung fortsetzen</button>
+  </form>
+{% endblock %}

@@ -50,6 +50,18 @@ Schritt in den durchblicker.at-Rechner ein. Die Web-Seite zeigt danach eine
 Tabelle: Soll-Wert vs. tatsächlich eingetragener Wert. Steht überall "OK",
 ist alles korrekt eingetragen.
 
+### Falls die Automatisierung kurz Ihre Hilfe braucht
+
+Bei manchen Autos (v.a. wenn kein Nationalcode im Dokument steht) kann sich
+die Automatisierung bei der genauen Fahrzeug-Ausstattung nicht sicher
+entscheiden — z.B. wenn mehrere passende Fahrzeugtypen gefunden werden.
+In diesem Fall siehst du eine Seite "Kurz Ihre Hilfe nötig": klicke einfach
+im **bereits geöffneten Browserfenster** selbst die richtige Option an
+(die zur Auswahl stehenden Optionen werden dir angezeigt), und klicke dann
+auf der Web-Seite auf "Automatisierung fortsetzen" — die Automatisierung
+trägt danach automatisch den Rest ein, ohne dass du irgendetwas erneut
+eingeben musst.
+
 ### Zum Schluss: Selbst prüfen und abschließen
 
 **Das Programm klickt absichtlich nirgends auf "Berechnen" oder "Zum

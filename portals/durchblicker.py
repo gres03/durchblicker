@@ -144,6 +144,39 @@ def _waehle_durchsuchbar(page, trigger_selector, text, feldpfad=None):
     raise RuntimeError(meldung)
 
 
+def _versuche_oder_pausiere(aktion):
+    """Generator-Helfer fuer fill(): fuehrt aktion() aus. Wirft aktion()
+    eine FeldKlaerungNoetig, wird NICHT abgebrochen, sondern pausiert
+    (die Exception wird 'ge-yielded') -- der Aufrufer (fill.py) haelt in
+    diesem Moment die Playwright-Sitzung an und laesst den Menschen die
+    betroffene Auswahl DIREKT im bereits geoeffneten Browserfenster
+    treffen. Kehrt fill() (via next()/send()) danach zurueck, wird
+    aktion() NICHT erneut versucht -- der Mensch hat sie bereits erledigt.
+    Liefert True, wenn pausiert wurde (manuelle Aktion), sonst False."""
+    try:
+        aktion()
+    except FeldKlaerungNoetig as e:
+        yield e
+        return True
+    return False
+
+
+def _gewaehltes_fahrzeug_name(page):
+    """Liest den Fahrzeugnamen aus der 'Gewähltes Fahrzeug:'-Bestaetigung,
+    die nach einem Klick auf eine Ergebniszeile die komplette Radioliste
+    ERSETZT (live beobachtet 2026-08-26: die Radios verschwinden komplett
+    aus dem DOM, sind daher NICHT mehr per is_checked() abfragbar -- auch
+    nicht frisch abgefragt). Wird nur fuer den manuell-pausierten Zweig
+    gebraucht; der automatische Zweig kennt den Zeilentext bereits vorher
+    aus _waehle_aus_ergebnisliste()'s Rueckgabewert."""
+    zeilen = [z.strip() for z in page.locator("body").inner_text().split("\n") if z.strip()]
+    if "Gewähltes Fahrzeug:" in zeilen:
+        idx = zeilen.index("Gewähltes Fahrzeug:")
+        if idx + 1 < len(zeilen):
+            return zeilen[idx + 1]
+    return None
+
+
 def _klick_weiter(page):
     page.get_by_role("button", name="Weiter", exact=True).click(timeout=10000)
     page.wait_for_load_state("networkidle")
@@ -315,12 +348,24 @@ class DurchblickerPortal(KfzPortal):
         return gruende
 
     def fill(self, page, fall):
-        """Fuellt jeden Schritt aus und verifiziert ihn SOFORT (Auslesen aus
-        dem DOM), BEVOR zum naechsten Schritt geblattert wird -- die Felder
-        eines Schritts existieren nach 'Weiter' nicht mehr im DOM (SPA), ein
-        nachtraegliches Zurueck-Auslesen am Ende ist daher nicht moeglich.
-        Die gesammelten Verifikationszeilen liegen danach in self._zeilen;
-        verify() liefert genau diese Liste."""
+        """Generator: fuellt jeden Schritt aus und verifiziert ihn SOFORT
+        (Auslesen aus dem DOM), BEVOR zum naechsten Schritt geblattert wird
+        -- die Felder eines Schritts existieren nach 'Weiter' nicht mehr im
+        DOM (SPA), ein nachtraegliches Zurueck-Auslesen am Ende ist daher
+        nicht moeglich. Die gesammelten Verifikationszeilen liegen danach
+        in self._zeilen; verify() liefert genau diese Liste.
+
+        Ist fill() als Generator implementiert (statt eine normale
+        Methode): an mehreren Stellen in der 'Marke und Modell'-Kaskade
+        kann eine einzelne Auswahl nicht automatisch getroffen werden
+        (FeldKlaerungNoetig, siehe _versuche_oder_pausiere). In diesem
+        Fall 'yielded' fill() die Exception statt abzubrechen -- der
+        Aufrufer (fill.py) haelt die Playwright-Sitzung an derselben
+        Stelle an, laesst den Menschen die Auswahl DIREKT im bereits
+        geoeffneten Browserfenster treffen, und ruft danach next()/send()
+        erneut auf, um fortzusetzen. Live entwickelt 2026-08-26 als
+        Antwort auf wiederholte Sackgassen bei mehrdeutigen
+        Fahrzeug-Varianten (siehe feldkarte.md)."""
         fz, vn, pr = fall["fahrzeug"], fall["versicherungsnehmer"], fall["produkt"]
         zeilen = []
 
@@ -333,6 +378,14 @@ class DurchblickerPortal(KfzPortal):
             Gross-/Kleinschreibung darf hier noch abweichen."""
             ok = soll.casefold() == ist.casefold() if ignore_case and isinstance(soll, str) and isinstance(ist, str) else soll == ist
             zeilen.append({"pfad": pfad, "soll": soll, "ist": ist, "ok": ok})
+
+        def pruefe_manuell(pfad, ist):
+            """Wie pruefe(), aber nachdem der Mensch die Auswahl direkt im
+            Browser getroffen hat (siehe _versuche_oder_pausiere) -- es
+            gibt keinen fall.json-Sollwert zum Vergleichen mehr, die
+            manuelle Auswahl gilt als richtig (der Mensch sieht dieselbe
+            Seite, ist also die verlaesslichste verfuegbare Quelle)."""
+            zeilen.append({"pfad": pfad, "soll": f"(manuell gewählt) {ist}", "ist": ist, "ok": True})
 
         def pruefe_kaskade(pfad, soll, ist, praefix_ok=False):
             """Wie pruefe(), aber fuer die 'Marke und Modell'-Kaskade: war
@@ -378,43 +431,97 @@ class DurchblickerPortal(KfzPortal):
             # passenden Fahrzeugtypen.
             page.get_by_text("Marke und Modell", exact=False).click(timeout=10000)
 
-            _waehle_durchsuchbar(page, "#auto\\.fahrzeug\\.marke-combobox", fz["marke"]["wert"], feldpfad="fahrzeug.marke")
-            pruefe("fahrzeug.marke", fz["marke"]["wert"], page.input_value("#auto\\.fahrzeug\\.marke-combobox"), ignore_case=True)
+            marke_sel = "#auto\\.fahrzeug\\.marke-combobox"
+            manuell = yield from _versuche_oder_pausiere(
+                lambda: _waehle_durchsuchbar(page, marke_sel, fz["marke"]["wert"], feldpfad="fahrzeug.marke")
+            )
+            marke_ist = page.input_value(marke_sel)
+            if manuell:
+                pruefe_manuell("fahrzeug.marke", marke_ist)
+            else:
+                pruefe("fahrzeug.marke", fz["marke"]["wert"], marke_ist, ignore_case=True)
 
-            _waehle_durchsuchbar(page, "#auto\\.fahrzeug\\.modell-combobox", fz["modell"]["wert"], feldpfad="fahrzeug.modell")
-            pruefe("fahrzeug.modell", fz["modell"]["wert"], page.input_value("#auto\\.fahrzeug\\.modell-combobox"), ignore_case=True)
+            modell_sel = "#auto\\.fahrzeug\\.modell-combobox"
+            manuell = yield from _versuche_oder_pausiere(
+                lambda: _waehle_durchsuchbar(page, modell_sel, fz["modell"]["wert"], feldpfad="fahrzeug.modell")
+            )
+            modell_ist = page.input_value(modell_sel)
+            if manuell:
+                pruefe_manuell("fahrzeug.modell", modell_ist)
+            else:
+                pruefe("fahrzeug.modell", fz["modell"]["wert"], modell_ist, ignore_case=True)
 
+            treibstoff_sel = "#auto\\.fahrzeug\\.treibstoff-combobox"
             treibstoff_soll = fz.get("treibstoff", {}).get("wert")
-            treibstoff_ist = _waehle_falls_leer(
-                page, "#auto\\.fahrzeug\\.treibstoff-combobox", treibstoff_soll, "Treibstoff", "fahrzeug.treibstoff"
+            manuell = yield from _versuche_oder_pausiere(
+                lambda: _waehle_falls_leer(page, treibstoff_sel, treibstoff_soll, "Treibstoff", "fahrzeug.treibstoff")
             )
-            pruefe_kaskade("fahrzeug.treibstoff", treibstoff_soll, treibstoff_ist)
+            treibstoff_ist = page.input_value(treibstoff_sel)
+            if manuell:
+                pruefe_manuell("fahrzeug.treibstoff", treibstoff_ist)
+            else:
+                pruefe_kaskade("fahrzeug.treibstoff", treibstoff_soll, treibstoff_ist)
 
+            kw_sel = "#auto\\.fahrzeug\\.kw-combobox"
             kw_soll = fz.get("motorleistung_kw", {}).get("wert")
-            kw_ist = _waehle_falls_leer(
-                page, "#auto\\.fahrzeug\\.kw-combobox", kw_soll, "Motorleistung (kW)", "fahrzeug.motorleistung_kw",
-                praefix_ok=True,
+            manuell = yield from _versuche_oder_pausiere(
+                lambda: _waehle_falls_leer(
+                    page, kw_sel, kw_soll, "Motorleistung (kW)", "fahrzeug.motorleistung_kw", praefix_ok=True
+                )
             )
-            pruefe_kaskade("fahrzeug.motorleistung_kw", kw_soll, kw_ist, praefix_ok=True)
+            kw_ist = page.input_value(kw_sel)
+            if manuell:
+                pruefe_manuell("fahrzeug.motorleistung_kw", kw_ist)
+            else:
+                pruefe_kaskade("fahrzeug.motorleistung_kw", kw_soll, kw_ist, praefix_ok=True)
 
+            bauart_sel = "#auto\\.fahrzeug\\.bauart-combobox"
             bauart_soll = fz.get("bauart", {}).get("wert")
-            bauart_ist = _waehle_falls_leer(
-                page, "#auto\\.fahrzeug\\.bauart-combobox", bauart_soll, "Bauart", "fahrzeug.bauart"
+            manuell = yield from _versuche_oder_pausiere(
+                lambda: _waehle_falls_leer(page, bauart_sel, bauart_soll, "Bauart", "fahrzeug.bauart")
             )
-            pruefe_kaskade("fahrzeug.bauart", bauart_soll, bauart_ist)
+            bauart_ist = page.input_value(bauart_sel)
+            if manuell:
+                pruefe_manuell("fahrzeug.bauart", bauart_ist)
+            else:
+                pruefe_kaskade("fahrzeug.bauart", bauart_soll, bauart_ist)
 
             tueren_sel = "#auto\\.fahrzeug\\.tueren-combobox"
             if page.query_selector(tueren_sel):
                 tueren_soll = fz.get("tueren", {}).get("wert")
-                tueren_ist = _waehle_falls_leer(page, tueren_sel, tueren_soll, "Anzahl Türen", "fahrzeug.tueren")
-                pruefe_kaskade("fahrzeug.tueren", tueren_soll, tueren_ist)
+                manuell = yield from _versuche_oder_pausiere(
+                    lambda: _waehle_falls_leer(page, tueren_sel, tueren_soll, "Anzahl Türen", "fahrzeug.tueren")
+                )
+                tueren_ist = page.input_value(tueren_sel)
+                if manuell:
+                    pruefe_manuell("fahrzeug.tueren", tueren_ist)
+                else:
+                    pruefe_kaskade("fahrzeug.tueren", tueren_soll, tueren_ist)
 
+            # Sonderfall gegenueber den anderen Kaskade-Feldern: ein Klick
+            # auf eine Ergebniszeile ERSETZT die komplette Radioliste durch
+            # eine 'Gewähltes Fahrzeug:'-Bestaetigung (live beobachtet
+            # 2026-08-26) -- der Zeilentext ist danach nicht mehr ueber die
+            # (verschwundenen) Radios abfragbar. Der Erfolgsfall kennt den
+            # Text daher vorab aus dem Rueckgabewert; der manuelle Fall
+            # liest ihn aus der Bestaetigung (_gewaehltes_fahrzeug_name).
             variante_soll = fz.get("variante", {}).get("wert")
-            zeile_text = _waehle_aus_ergebnisliste(page, variante_soll)
-            erste_zeile = zeile_text.splitlines()[0] if zeile_text else "?"
+            try:
+                ergebnis_text = _waehle_aus_ergebnisliste(page, variante_soll)
+                manuell = False
+            except FeldKlaerungNoetig as e:
+                yield e
+                ergebnis_text = None
+                manuell = True
+
+            if manuell:
+                erste_zeile = _gewaehltes_fahrzeug_name(page) or "?"
+            else:
+                erste_zeile = ergebnis_text.splitlines()[0] if ergebnis_text else "?"
+
             zeilen.append({
                 "pfad": "fahrzeug.variante (Fahrzeug ausgewählt)",
-                "soll": variante_soll or f"(automatisch) {erste_zeile}",
+                "soll": "(manuell gewählt)" if manuell else (variante_soll or f"(automatisch) {erste_zeile}"),
                 "ist": erste_zeile,
                 "ok": True,
             })
@@ -458,12 +565,19 @@ class DurchblickerPortal(KfzPortal):
         pruefe("versicherungsnehmer.bonus_malus_stufe", vn["bonus_malus_stufe"]["wert"],
                page.inner_text("#auto\\.vn\\.bmstufe-select").strip())
 
-        _waehle_durchsuchbar(
-            page, "#auto\\.vn\\.versicherer-combobox", vn["bestehende_versicherung"]["wert"],
-            feldpfad="versicherungsnehmer.bestehende_versicherung",
+        versicherer_sel = "#auto\\.vn\\.versicherer-combobox"
+        manuell = yield from _versuche_oder_pausiere(
+            lambda: _waehle_durchsuchbar(
+                page, versicherer_sel, vn["bestehende_versicherung"]["wert"],
+                feldpfad="versicherungsnehmer.bestehende_versicherung",
+            )
         )
-        pruefe("versicherungsnehmer.bestehende_versicherung", vn["bestehende_versicherung"]["wert"],
-               page.input_value("#auto\\.vn\\.versicherer-combobox"), ignore_case=True)
+        versicherer_ist = page.input_value(versicherer_sel)
+        if manuell:
+            pruefe_manuell("versicherungsnehmer.bestehende_versicherung", versicherer_ist)
+        else:
+            pruefe("versicherungsnehmer.bestehende_versicherung", vn["bestehende_versicherung"]["wert"],
+                   versicherer_ist, ignore_case=True)
 
         zweitwagen_index = 0 if vn["zweitwagen"]["wert"] else 1
         zweitwagen_radios = page.locator('input[name="auto.rabatte.zweitwagen-radiogroup"]')

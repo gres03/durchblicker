@@ -19,10 +19,37 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-BASE_DIR = Path(__file__).resolve().parent
-load_dotenv(BASE_DIR / ".env")
+from paths import daten_pfad
+
+ENV_PFAD = daten_pfad() / ".env"
+load_dotenv(ENV_PFAD)
 
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
+
+
+def gemini_key_gesetzt():
+    return bool(os.environ.get("GEMINI_API_KEY"))
+
+
+def speichere_gemini_key(neuer_key):
+    """Schreibt den Gemini-API-Schluessel in die .env NEBEN der .exe/dem
+    Programmordner (siehe paths.daten_pfad) und uebernimmt ihn sofort in
+    os.environ, damit er ohne Neustart wirksam wird -- fuer die
+    '/einstellungen'-Seite in app.py, die die bisherige setup.ps1-Abfrage
+    fuer eine als .exe gepackte Version ersetzt."""
+    zeilen = []
+    gesetzt = False
+    if ENV_PFAD.exists():
+        for zeile in ENV_PFAD.read_text(encoding="utf-8").splitlines():
+            if zeile.startswith("GEMINI_API_KEY="):
+                zeilen.append(f"GEMINI_API_KEY={neuer_key}")
+                gesetzt = True
+            else:
+                zeilen.append(zeile)
+    if not gesetzt:
+        zeilen.append(f"GEMINI_API_KEY={neuer_key}")
+    ENV_PFAD.write_text("\n".join(zeilen) + "\n", encoding="utf-8")
+    os.environ["GEMINI_API_KEY"] = neuer_key
 
 EXTRAKTIONS_PROMPT = """\
 Lies die angehängten Dokumente (Zulassungsschein, Versicherungsangebot,

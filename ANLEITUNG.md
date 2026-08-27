@@ -5,26 +5,32 @@ Programmierkenntnisse.
 
 ## Was du einmalig brauchst
 
-- Einen Windows-, Mac- oder Linux-PC
-- Einmalig eingerichtet (das macht jemand einmal für dich, danach bleibt es
-  so): Python + das Programm selbst, siehe README.md "Setup"
+- Einen Windows-PC (für die fertige .exe, siehe unten) oder irgendeinen
+  Windows-/Mac-/Linux-PC mit Python (siehe README.md "Setup")
 - Einen kostenlosen Gemini-API-Schlüssel für die automatische
-  Dokumentenerkennung (kein Zahlungsmittel nötig, wird beim Setup einmalig
-  eingerichtet — siehe README.md)
-- Deine Zugangsdaten für durchblicker.at (die hast du schon)
+  Dokumentenerkennung (kein Zahlungsmittel nötig, wird beim ersten Start
+  in der Web-Oberfläche unter "Einstellungen" eingetragen)
 
-Kein Abo, keine laufenden Kosten.
+Kein Abo, keine laufenden Kosten. Ein Konto bei durchblicker.at wird NICHT
+gebraucht — der Rechner ist öffentlich benutzbar.
 
 ## Der Ablauf für einen Kundenfall
 
 ### Web-Oberfläche starten
 
-**Windows:** Doppelklick auf `Webapp_starten.bat` im Programm-Ordner.
-**Mac/Linux:** Terminal im Programm-Ordner öffnen und `./webapp_starten.sh`.
+**Am einfachsten (Windows, kein Python nötig):** die fertige
+`durchblicker-automation.exe` von der [Releases-Seite](https://github.com/gres03/durchblicker/releases)
+herunterladen und doppelklicken.
 
-Ein schwarzes Fenster öffnet sich kurz, dann öffnet sich automatisch dein
-Browser mit der Programm-Oberfläche. Das schwarze Fenster einfach offen
-lassen, solange du arbeitest.
+**Alternative (Projektordner per Python-Setup eingerichtet):**
+Doppelklick auf `Webapp_starten.bat` im Programm-Ordner (Windows) bzw.
+`./webapp_starten.sh` im Terminal (Mac/Linux).
+
+In beiden Fällen: ein schwarzes Fenster öffnet sich kurz, dann öffnet sich
+automatisch dein Browser mit der Programm-Oberfläche. Das schwarze
+Fenster einfach offen lassen, solange du arbeitest. Fehlt noch der
+Gemini-API-Schlüssel, landest du zuerst auf der Einstellungen-Seite —
+kurz dem Link dort folgen, Schlüssel einfügen, speichern.
 
 ### Schritt 1: Dokument(e) hochladen
 

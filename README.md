@@ -4,6 +4,28 @@ Playwright-Automatisierung, die KFZ-Versicherungsdaten in den
 durchblicker.at KFZ-Rechner einträgt. Füllt nur aus — klickt nie auf
 "Berechnen"/"Zum Ergebnis" und sendet nichts ab.
 
+## Schnellster Weg: fertige .exe herunterladen (kein Python nötig)
+
+Für jemanden, der nur die fertige App benutzen will (kein Interesse an
+Code/Entwicklung): auf der [Releases-Seite](https://github.com/gres03/durchblicker/releases)
+die neueste `durchblicker-automation.exe` herunterladen und doppelklicken.
+
+- Kein Python, kein Git nötig -- die .exe enthält alles.
+- Ein schwarzes Konsolenfenster öffnet sich, danach automatisch der Browser
+  mit der Programm-Oberfläche.
+- **Erster Start:** lädt automatisch Chromium herunter (~430 MB, einmalig,
+  braucht Internet, kann ein paar Minuten dauern -- Fortschrittsanzeige im
+  Konsolenfenster). Landet in einem `playwright-browsers`-Ordner NEBEN der
+  .exe -- diesen Ordner nicht löschen, sonst wird bei jedem Start neu
+  heruntergeladen.
+- Beim allerersten Start fragt die Web-Oberfläche unter "Einstellungen"
+  nach einem kostenlosen Gemini-API-Schlüssel (siehe dortige Anleitung).
+- Updates: einfach die neue .exe von der Releases-Seite herunterladen und
+  die alte ersetzen (der `playwright-browsers`-Ordner bleibt erhalten,
+  muss nicht neu heruntergeladen werden).
+
+Siehe `ANLEITUNG.md` für die Bedienung danach.
+
 ## Setup (neuer PC, 2 Schritte)
 
 1. `git clone https://github.com/gres03/durchblicker.git && cd durchblicker`
@@ -172,10 +194,43 @@ Kombinationen ausserhalb des live erkundeten Pfads (z.B. Neuanmeldung
 eines Neuwagens, Leasing/Kredit) lehnt `fill.py` mit Klartext-Grund ab,
 statt zu raten (`DurchblickerPortal.unterstuetzter_pfad`).
 
+## .exe bauen und als GitHub-Release veroeffentlichen (fuer Entwickler)
+
+```
+pip install pyinstaller
+pyinstaller build_exe.spec --noconfirm
+```
+
+Ergebnis: `dist/durchblicker-automation.exe` (~63 MB, Chromium wird NICHT
+mitgebaut, siehe `app._stelle_chromium_sicher` -- laedt sich beim ersten
+Start des Endnutzers selbst herunter). `build_exe.spec` bindet
+`templates/`, `fall.schema.json` und `synonyme.json` als Datendateien
+ein; `paths.py` sorgt dafuer, dass sowohl diese schreibgeschuetzten
+Ressourcen als auch beschreibbare Laufzeitdaten (Einstellungen,
+`web_uploads/`, `logs/`) unabhaengig davon korrekt gefunden werden, ob
+das Programm normal per `python app.py` oder als gepackte .exe laeuft.
+
+**Wichtige Falle (live entdeckt 2026-08-27):** Playwright legt Browser
+standardmaessig relativ zum Ort des Treiber-Pakets ab -- bei einer
+PyInstaller-onefile-.exe aendert sich dieser Ort (temporaeres
+Extraktionsverzeichnis) bei JEDEM Start, wodurch heruntergeladenes
+Chromium sofort wieder "verschwinden" wuerde. `paths.py` setzt daher
+`PLAYWRIGHT_BROWSERS_PATH` auf einen festen Ort neben der .exe.
+
+Veroeffentlichen: `dist/durchblicker-automation.exe` als Anhang an einen
+neuen GitHub-Release haengen (GitHub-Weboberflaeche: Releases -> "Draft a
+new release", Datei per Drag & Drop anhaengen -- oder `gh release create`,
+falls die GitHub-CLI installiert ist). NUR die .exe hochladen, NICHT den
+lokalen `playwright-browsers`-Ordner (laedt sich beim Endnutzer selbst).
+Repo muss dafuer oeffentlich sein (bzw. zumindest die Releases), sonst
+brauchen Downloader ein GitHub-Konto mit Zugriff.
+
 ## Struktur
 
 - `ANLEITUNG.md` — nicht-technische Bedienungsanleitung fuer den Alltagsgebrauch
 - `app.py` — lokale Web-Oberflaeche (Upload -> Erkennung -> Pruefen -> Ausfuellen), `templates/`
+- `paths.py` — Pfad-Aufloesung fuer Ressourcen/Laufzeitdaten, funktioniert sowohl per `python app.py` als auch als PyInstaller-.exe
+- `build_exe.spec` — PyInstaller-Bauvorschrift fuer `durchblicker-automation.exe` (siehe Abschnitt oben)
 - `extract.py` — automatische Dokumentenerkennung ueber die Gemini API (kostenloses Kontingent)
 - `extraktion_anfrage.txt` — Textvorlage fuer die manuelle Dokumentenerkennung via claude.ai (Fallback ohne API-Key)
 - `Setup_starten.bat` — Doppelklick-Wrapper fuer `setup.ps1` (Windows, umgeht die PowerShell-Ausfuehrungsrichtlinie)

@@ -34,13 +34,13 @@ from colorama import Fore, Style, init as colorama_init
 from playwright.sync_api import sync_playwright
 
 from feldbezeichnungen import label
+from paths import daten_pfad
 from portals.base import FeldKlaerungNoetig
 from portals.durchblicker import DurchblickerPortal
 from validate import validiere
 
-BASE_DIR = Path(__file__).resolve().parent
-STATE_FILE = BASE_DIR / "state" / "storage_state.json"
-LOGS_DIR = BASE_DIR / "logs"
+STATE_FILE = daten_pfad() / "state" / "storage_state.json"
+LOGS_DIR = daten_pfad() / "logs"
 
 
 def drucke_verifikationstabelle(zeilen):

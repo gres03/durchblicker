@@ -109,7 +109,10 @@
   <div class="huelle">
     <div class="kopf">
       <span class="marke">durchblicker-automation</span>
-      <span class="schritt">{% block schritt %}{% endblock %}</span>
+      <span class="schritt">
+        {% block schritt %}{% endblock %}
+        <a href="{{ url_for('einstellungen') }}" style="margin-left:1rem; color: var(--text-muted);">Einstellungen</a>
+      </span>
     </div>
     <div class="karte">
       {% block inhalt %}{% endblock %}

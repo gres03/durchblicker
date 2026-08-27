@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block titel %}Einstellungen — durchblicker-automation{% endblock %}
+{% block schritt %}{% endblock %}
+{% block inhalt %}
+  {% if ersteinrichtung %}
+    <h1>Willkommen — kurze Ersteinrichtung</h1>
+    <p class="hinweis">
+      Bevor es losgeht, brauchst du einmalig einen kostenlosen Gemini-API-Schlüssel
+      für die automatische Dokumentenerkennung (kein Zahlungsmittel nötig).
+    </p>
+  {% else %}
+    <h1>Einstellungen</h1>
+  {% endif %}
+
+  {% if gespeichert %}
+    <p style="color: var(--erfolg); background: var(--erfolg-hell); padding: 0.8rem 1rem; border-radius: 8px;">
+      Gespeichert. Du kannst jetzt Dokumente hochladen.
+    </p>
+  {% endif %}
+
+  <ol class="hinweis" style="padding-left: 1.2rem;">
+    <li>Auf <strong>aistudio.google.com/apikey</strong> gehen (mit einem Google-Konto anmelden).</li>
+    <li>Auf "Create API key" klicken und den Schlüssel kopieren.</li>
+    <li>Hier einfügen und speichern:</li>
+  </ol>
+
+  <form method="post" action="{{ url_for('einstellungen') }}">
+    <input type="text" name="gemini_key" placeholder="Gemini-API-Schlüssel einfügen" style="margin-bottom: 1rem;" required>
+    <p>
+      <button class="knopf" type="submit">Speichern</button>
+      {% if key_gesetzt and not ersteinrichtung %}
+        <a href="{{ url_for('start') }}" style="margin-left: 1rem;">Zurück</a>
+      {% endif %}
+    </p>
+  </form>
+
+  {% if key_gesetzt %}
+    <p class="hinweis">Aktuell ist bereits ein Schlüssel hinterlegt. Zum Ändern einfach einen neuen eintragen.</p>
+  {% endif %}
+{% endblock %}

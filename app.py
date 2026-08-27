@@ -14,24 +14,23 @@ import json
 import threading
 import webbrowser
 from datetime import date
-from pathlib import Path
 
 from flask import Flask, redirect, render_template, request, url_for
 
 from confirm import resolve_wert_schema, sammle_gruende
-from extract import ExtraktionsFehler, extrahiere
+from extract import ExtraktionsFehler, extrahiere, gemini_key_gesetzt, speichere_gemini_key
 from feldbezeichnungen import label
 from fill import FuellSitzung, bereit_zum_ausfuellen
 from mapping import map_fall
+from paths import daten_pfad, ressourcen_pfad
 from portals.durchblicker import DurchblickerPortal
 from validate import alle_felder, lade_schema, validiere
 
-BASE_DIR = Path(__file__).resolve().parent
-UPLOAD_DIR = BASE_DIR / "web_uploads"
+UPLOAD_DIR = daten_pfad() / "web_uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 FALL_PFAD = UPLOAD_DIR / "aktueller_fall.json"
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=str(ressourcen_pfad() / "templates"))
 app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # 20 MB, grosszuegig fuer Fotos/gescannte PDFs
 
 # Genau eine laufende Ausfuell-Sitzung gleichzeitig -- passt zum Rest der
@@ -112,7 +111,30 @@ def parse_formular_wert(wert_schema, roh_text, aktueller_wert):
 
 @app.route("/")
 def start():
+    if not gemini_key_gesetzt():
+        return redirect(url_for("einstellungen", ersteinrichtung=1))
     return render_template("upload.html")
+
+
+@app.route("/einstellungen", methods=["GET", "POST"])
+def einstellungen():
+    """Ersetzt fuer eine als .exe gepackte Version die bisherige
+    setup.ps1-Terminalabfrage: der Gemini-API-Schluessel wird hier
+    eingetippt und direkt neben der .exe in .env gespeichert (siehe
+    extract.speichere_gemini_key), sofort wirksam ohne Neustart."""
+    gespeichert = False
+    if request.method == "POST":
+        neuer_key = request.form.get("gemini_key", "").strip()
+        if neuer_key:
+            speichere_gemini_key(neuer_key)
+            gespeichert = True
+
+    return render_template(
+        "einstellungen.html",
+        key_gesetzt=gemini_key_gesetzt(),
+        gespeichert=gespeichert,
+        ersteinrichtung=request.args.get("ersteinrichtung") == "1" and not gemini_key_gesetzt(),
+    )
 
 
 @app.route("/hochladen", methods=["POST"])
@@ -276,6 +298,28 @@ def _oeffne_browser():
     webbrowser.open("http://127.0.0.1:5000/")
 
 
+def _stelle_chromium_sicher():
+    """Playwright braucht einen heruntergeladenen Chromium-Browser, um
+    ueberhaupt etwas ausfuellen zu koennen -- 'playwright install chromium'
+    laedt ihn (einmalig, ~150 MB, braucht Internet) in einen
+    Nutzer-Cache-Ordner (nicht in dieses Programmverzeichnis). Idempotent:
+    ist Chromium schon vorhanden, kehrt der Aufruf sofort zurueck --
+    daher bei JEDEM Start unbesorgt aufrufbar, nicht nur beim ersten Mal."""
+    import subprocess
+
+    from playwright._impl._driver import compute_driver_executable, get_driver_env
+
+    print("Bereite Playwright vor (beim allerersten Start wird Chromium "
+          "heruntergeladen, ~150 MB, braucht Internet -- kann etwas dauern)...")
+    driver_executable, driver_cli = compute_driver_executable()
+    subprocess.run(
+        [driver_executable, driver_cli, "install", "chromium", "--no-shell"],
+        env=get_driver_env(), check=True,
+    )
+    print("Playwright bereit.")
+
+
 if __name__ == "__main__":
+    _stelle_chromium_sicher()
     threading.Timer(1.0, _oeffne_browser).start()
     app.run(debug=False, threaded=True)

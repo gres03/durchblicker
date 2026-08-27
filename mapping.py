@@ -22,8 +22,9 @@ Projektauftrag).
 import json
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent
-SYNONYME_PATH = BASE_DIR / "synonyme.json"
+from paths import ressourcen_pfad
+
+SYNONYME_PATH = ressourcen_pfad() / "synonyme.json"
 
 # Vollstaendige, live gegen durchblicker.at verifizierte Optionslisten
 # (siehe feldkarte.md). NUR fuer Felder mit bekannter Vollstaendigkeit --

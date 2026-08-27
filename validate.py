@@ -27,8 +27,9 @@ from pathlib import Path
 
 import jsonschema
 
-BASE_DIR = Path(__file__).resolve().parent
-SCHEMA_PATH = BASE_DIR / "fall.schema.json"
+from paths import ressourcen_pfad
+
+SCHEMA_PATH = ressourcen_pfad() / "fall.schema.json"
 
 PLZ_PATTERN = re.compile(r"^\d{4}$")
 MIN_ALTER = 17
